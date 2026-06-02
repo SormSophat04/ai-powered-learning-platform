@@ -3,6 +3,29 @@ import { useNavigate } from 'react-router-dom';
 import { GraduationCap, ArrowRight, Cpu, Award, Activity, Brain, Check, Sun, Moon } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
+const sponsors = [
+  { name: 'Apple', img: 'https://cdn.svgporn.com/logos/apple.svg' },
+  { name: 'Google', img: 'https://cdn.svgporn.com/logos/google.svg' },
+  { name: 'SpaceX', img: 'https://cdn.simpleicons.org/spacex' },
+  { name: 'NASA', img: 'https://cdn.simpleicons.org/nasa' },
+  { name: 'Lamborghini', img: 'https://cdn.simpleicons.org/lamborghini' },
+  { name: 'Microsoft', img: 'https://cdn.svgporn.com/logos/microsoft.svg' },
+  { name: 'Amazon', img: 'https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg' },
+  { name: 'Meta', img: 'https://cdn.svgporn.com/logos/meta.svg' },
+  { name: 'Netflix', img: 'https://cdn.svgporn.com/logos/netflix.svg' },
+  { name: 'Tesla', img: 'https://cdn.simpleicons.org/tesla' },
+  { name: 'Samsung', img: 'https://cdn.svgporn.com/logos/samsung.svg' },
+  { name: 'Intel', img: 'https://cdn.svgporn.com/logos/intel.svg' },
+  { name: 'IBM', img: 'https://cdn.svgporn.com/logos/ibm.svg' },
+  { name: 'Adobe', img: 'https://cdn.svgporn.com/logos/adobe.svg' },
+  { name: 'Spotify', img: 'https://cdn.svgporn.com/logos/spotify.svg' },
+  { name: 'Uber', img: 'https://cdn.simpleicons.org/uber' },
+  { name: 'X', img: 'https://cdn.svgporn.com/logos/x.svg' },
+  { name: 'LinkedIn', img: 'https://cdn.svgporn.com/logos/linkedin.svg' },
+  { name: 'PayPal', img: 'https://cdn.svgporn.com/logos/paypal.svg' },
+  { name: 'Toyota', img: 'https://cdn.simpleicons.org/toyota' },
+];
+
 export default function Landing() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useStore();
@@ -212,6 +235,51 @@ export default function Landing() {
               </ul>
             </div>
             <button onClick={() => navigate('/login')} className="w-full py-2.5 rounded-lg border border-slate-250 dark:border-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold cursor-pointer">Contact Us</button>
+          </div>
+        </div>
+      </section>
+
+      {/* Sponsors */}
+      <section className="py-16 border-t border-slate-200 dark:border-slate-800/40">
+        <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-center mb-10">
+          Trusted by Industry Leaders
+        </p>
+
+        <div className="sponsors-scroll mx-auto">
+          <div className="sponsors-track gap-16">
+            {[...sponsors, ...sponsors].map((brand, i) => (
+              <div
+                key={i}
+                className="h-12 px-6 rounded-xl bg-slate-100 dark:bg-slate-800/60 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08),0_1px_3px_-1px_rgba(0,0,0,0.04)] flex items-center justify-center"
+                title={brand.name}
+              >
+                <img
+                  src={brand.img}
+                  alt={brand.name}
+                  className="h-7 w-auto object-contain"
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="sponsors-scroll mx-auto mt-4">
+          <div className="sponsors-track-back gap-16">
+            {[...sponsors, ...sponsors].map((brand, i) => (
+              <div
+                key={i}
+                className="h-12 px-6 rounded-xl bg-slate-100 dark:bg-slate-800/60 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.08),0_1px_3px_-1px_rgba(0,0,0,0.04)] flex items-center justify-center"
+                title={brand.name}
+              >
+                <img
+                  src={brand.img}
+                  alt={brand.name}
+                  className="h-7 w-auto object-contain"
+                  loading="lazy"
+                />
+              </div>
+            ))}
           </div>
         </div>
       </section>

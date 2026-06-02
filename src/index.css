@@ -110,4 +110,43 @@ body {
   overflow-x: hidden;
 }
 
+/* Sponsors horizontal auto-scroll */
+.sponsors-scroll {
+  position: relative;
+  overflow: hidden;
+  mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+}
+
+.sponsors-track,
+.sponsors-track-back {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  width: max-content;
+}
+
+.sponsors-track {
+  animation: scroll-side 45s linear infinite;
+}
+
+.sponsors-track-back {
+  animation: scroll-back 45s linear infinite;
+}
+
+.sponsors-scroll:hover .sponsors-track,
+.sponsors-scroll:hover .sponsors-track-back {
+  animation-play-state: paused;
+}
+
+@keyframes scroll-side {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes scroll-back {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
 
