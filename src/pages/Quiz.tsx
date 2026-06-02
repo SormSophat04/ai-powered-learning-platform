@@ -1,0 +1,252 @@
+import React, { useEffect, useRef } from 'react';
+import { Brain, Clock, Sparkles, Check, X } from 'lucide-react';
+import { useStore } from '../store/useStore';
+import { mockQuizzes } from '../mockData';
+
+export default function Quiz() {
+  const {
+    quizTopic, quizDifficulty, quizCount, quizRunning, currentQuiz, 
+    quizCurrentIndex, quizSelectedAnswer, quizAnswersRecord, quizTimer, 
+    quizScore, quizCompleted, setQuizTopic, setQuizDifficulty, setQuizCount, 
+    startQuiz, selectQuizAnswer, nextQuizQuestion, prevQuizQuestion, 
+    incrementTimer, resetQuiz
+  } = useStore();
+
+  const timerRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (quizRunning && !quizCompleted) {
+      timerRef.current = setInterval(() => {
+        incrementTimer();
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [quizRunning, quizCompleted]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleStartQuiz = () => {
+    const quizSet = mockQuizzes['java-oop']; // Default set
+    startQuiz(quizSet);
+  };
+
+  return (
+    <div className="max-w-[760px] mx-auto text-left font-sans">
+      {!quizRunning ? (
+        // Quiz Configuration Forms
+        <div className="glass-panel p-8 border border-slate-200/60 dark:border-slate-800/40">
+          <h2 className="text-xl font-heading font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+            <Brain size={22} className="text-[#4F46E5]" /> AI Practice Quiz Generator
+          </h2>
+
+          <div className="space-y-4">
+            <div className="form-group">
+              <label className="form-label text-[11px] font-semibold text-slate-400 mb-1.5">Learning Syllabus Topic</label>
+              <select 
+                value={quizTopic} 
+                onChange={(e) => setQuizTopic(e.target.value)}
+                className="form-input text-xs"
+              >
+                <option value="Java OOP">Java OOP Foundations (Polymorphism, Interfaces)</option>
+                <option value="SQL JOINs">SQL Normalization & JOIN Queries</option>
+                <option value="AI Networks">Neural Network Backpropagation Structures</option>
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="form-group">
+                <label className="form-label text-[11px] font-semibold text-slate-400 mb-1.5">Difficulty Mode</label>
+                <div className="flex gap-2">
+                  {['Easy', 'Medium', 'Hard'].map(diff => (
+                    <button 
+                      key={diff}
+                      type="button"
+                      onClick={() => setQuizDifficulty(diff)}
+                      className={`flex-grow py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
+                        quizDifficulty === diff 
+                          ? 'bg-[#4F46E5] text-white border-[#4F46E5]' 
+                          : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50'
+                      }`}
+                    >
+                      {diff}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label text-[11px] font-semibold text-slate-400 mb-1.5">Question Count</label>
+                <select 
+                  value={quizCount} 
+                  onChange={(e) => setQuizCount(Number(e.target.value))}
+                  className="form-input text-xs"
+                >
+                  <option value={5}>5 Questions (Express)</option>
+                  <option value={10}>10 Questions (Standard)</option>
+                  <option value={20}>20 Questions (Deep Assessment)</option>
+                </select>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleStartQuiz}
+              className="w-full py-3 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/15 flex items-center justify-center gap-1.5 cursor-pointer mt-6"
+            >
+              Generate AI Quiz <Sparkles size={14} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        // Quiz Execution Page
+        <div className="glass-panel p-6 md:p-8 border border-slate-200/60 dark:border-slate-800/40">
+          
+          {/* Quiz Header */}
+          <div className="flex justify-between items-center pb-4 border-b border-slate-200 dark:border-slate-800/60 mb-5">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900 dark:text-slate-100">{currentQuiz.topic}</h3>
+              <span className="text-[10px] text-slate-450 dark:text-slate-500 font-semibold uppercase tracking-wider block mt-0.5">Difficulty: {quizDifficulty}</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1 bg-slate-100 dark:bg-slate-900 px-2.5 py-1 rounded-md">
+                <Clock size={12} /> {formatTime(quizTimer)}
+              </span>
+              <span className="badge badge-primary text-[10px]">
+                Q {quizCurrentIndex + 1} of {currentQuiz.questions.length}
+              </span>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mb-6 overflow-hidden">
+            <div 
+              className="h-full bg-gradient-to-r from-[#4F46E5] to-cyan-400 transition-all duration-300"
+              style={{ width: `${((quizCurrentIndex + 1) / currentQuiz.questions.length) * 100}%` }}
+            ></div>
+          </div>
+
+          {!quizCompleted ? (
+            // Quiz runtime question display
+            <div>
+              <h2 className="text-sm md:text-base font-extrabold text-slate-900 dark:text-slate-100 mb-6 leading-relaxed">
+                {currentQuiz.questions[quizCurrentIndex].question}
+              </h2>
+
+              <div className="space-y-3 mb-8">
+                {currentQuiz.questions[quizCurrentIndex].options.map((opt: string, idx: number) => {
+                  const isSelected = quizSelectedAnswer === idx;
+                  return (
+                    <div 
+                      key={idx}
+                      onClick={() => selectQuizAnswer(idx)}
+                      className={`flex items-center gap-3.5 p-4 rounded-xl border transition-all cursor-pointer ${
+                        isSelected 
+                          ? 'border-[#4F46E5] bg-[#4F46E5]/10 text-[#4F46E5] dark:text-indigo-400 font-bold' 
+                          : 'border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-800/40 hover:border-[#4F46E5]/40'
+                      }`}
+                    >
+                      <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${
+                        isSelected 
+                          ? 'border-[#4F46E5] bg-[#4F46E5] text-white' 
+                          : 'border-slate-400 text-slate-500'
+                      }`}>
+                        {String.fromCharCode(65 + idx)}
+                      </div>
+                      <span className="text-xs">{opt}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Navigation buttons */}
+              <div className="flex justify-between items-center border-t border-slate-250 dark:border-slate-850 pt-5">
+                <button 
+                  onClick={prevQuizQuestion} 
+                  disabled={quizCurrentIndex === 0}
+                  className="px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button 
+                  onClick={nextQuizQuestion} 
+                  disabled={quizSelectedAnswer === null}
+                  className="px-4 py-2.5 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {quizCurrentIndex + 1 === currentQuiz.questions.length ? 'Submit Quiz' : 'Next Question'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            // Quiz completed review board
+            <div className="text-center">
+              <div className={`w-[100px] h-[100px] rounded-full border-4 flex flex-col items-center justify-center mx-auto mb-6 ${
+                quizScore! >= 70 
+                  ? 'border-emerald-500 bg-emerald-500/10 text-emerald-500' 
+                  : 'border-rose-500 bg-rose-500/10 text-rose-500'
+              }`}>
+                <span className="text-3xl font-black font-heading leading-none">{quizScore}%</span>
+                <span className="text-[8px] uppercase font-bold tracking-widest mt-1">Score</span>
+              </div>
+
+              <h2 className="text-xl font-heading font-black mb-2 text-slate-900 dark:text-white">
+                {quizScore! >= 70 ? 'Congratulations! You Passed.' : 'Keep Practicing!'}
+              </h2>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-8 max-w-[400px] mx-auto">
+                You successfully resolved {quizAnswersRecord.filter((ans, i) => ans === currentQuiz.questions[i].answer).length} out of {currentQuiz.questions.length} questions correctly.
+              </p>
+
+              <div className="border-b border-slate-250 dark:border-slate-850 pb-2 mb-4 text-left">
+                <h4 className="text-[12px] font-bold text-slate-800 dark:text-slate-200">AI Questions Review & Insights</h4>
+              </div>
+
+              <div className="space-y-4 text-left max-h-[320px] overflow-y-auto pr-1 mb-8">
+                {currentQuiz.questions.map((q: any, idx: number) => {
+                  const correct = quizAnswersRecord[idx] === q.answer;
+                  return (
+                    <div 
+                      key={q.id}
+                      className={`p-4 rounded-xl border bg-white dark:bg-slate-900/20 text-xs ${
+                        correct 
+                          ? 'border-emerald-500/30' 
+                          : 'border-rose-500/30'
+                      }`}
+                    >
+                      <h4 className="font-bold text-slate-900 dark:text-slate-100 flex items-start gap-2 mb-2 leading-relaxed">
+                        {correct ? <Check size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" /> : <X size={14} className="text-rose-500 mt-0.5 flex-shrink-0" />}
+                        Question {idx + 1}: {q.question}
+                      </h4>
+                      <p className="text-slate-500 dark:text-slate-400 mb-1">
+                        Your Answer: <strong className={correct ? 'text-emerald-500' : 'text-rose-500'}>{q.options[quizAnswersRecord[idx]!] || 'Unanswered'}</strong>
+                      </p>
+                      {!correct && (
+                        <p className="text-slate-500 dark:text-slate-400 mb-1">
+                          Correct Choice: <strong className="text-emerald-500">{q.options[q.answer]}</strong>
+                        </p>
+                      )}
+                      <p className="text-slate-500 dark:text-slate-400 italic pl-3 border-l-2 border-[#4F46E5] mt-2.5 leading-normal">
+                        <strong>AI Explanation:</strong> {q.explanation}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button 
+                onClick={resetQuiz}
+                className="px-6 py-2.5 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/10 cursor-pointer"
+              >
+                Close & Return
+              </button>
+            </div>
+          )}
+
+        </div>
+      )}
+    </div>
+  );
+}
