@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GraduationCap, ArrowRight, Cpu, Award, Activity, Brain, Check, Sun, Moon } from 'lucide-react';
+import { GraduationCap, ArrowRight, Cpu, Award, Activity, Brain, Check, Sun, Moon, Menu, X } from 'lucide-react';
 import { useStore } from '../store/useStore';
 
 const sponsors = [
@@ -29,30 +29,66 @@ const sponsors = [
 export default function Landing() {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useStore();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#090D1A] text-slate-800 dark:text-slate-200 px-6 max-w-[1200px] mx-auto font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#090D1A] text-slate-800 dark:text-slate-200 font-sans">
       {/* Navbar Header */}
-      <header className="flex justify-between items-center py-6 border-b border-slate-200 dark:border-slate-800/40">
-        <div className="flex items-center gap-2">
-          <div className="w-[34px] h-[34px] rounded-lg bg-gradient-to-br from-[#4F46E5] to-[#06B6D4] flex items-center justify-center text-white font-bold">
-            <GraduationCap size={18} />
+      <header className="sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800/40 bg-white/80 dark:bg-[#090D1A]/80 backdrop-blur-glass">
+        <div className="max-w-[1200px] mx-auto px-6 flex items-center justify-between h-[60px] md:h-[68px]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-[30px] h-[30px] md:w-[34px] md:h-[34px] rounded-lg bg-gradient-to-br from-[#4F46E5] to-[#06B6D4] flex items-center justify-center text-white font-bold flex-shrink-0">
+              <GraduationCap size={16} />
+            </div>
+            <span className="font-heading font-extrabold text-[16px] md:text-[20px] bg-gradient-to-r from-[#4F46E5] to-[#06B6D4] bg-clip-text text-transparent">
+              EduMind AI
+            </span>
           </div>
-          <span className="font-heading font-extrabold text-[20px] bg-gradient-to-r from-[#4F46E5] to-[#06B6D4] bg-clip-text text-transparent">
-            EduMind AI
-          </span>
+
+          {/* Desktop Nav */}
+          <nav className="hidden md:flex items-center gap-5">
+            <a href="#features" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all">Features</a>
+            <a href="#testimonials" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all">Testimonials</a>
+            <a href="#pricing" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all">Pricing</a>
+            <div className="flex items-center gap-2.5 ml-2">
+              <button onClick={toggleTheme} className="h-[34px] w-[34px] rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer">
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+              </button>
+              <button onClick={() => navigate('/login')} className="h-[34px] px-4 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer">Login</button>
+              <button onClick={() => navigate('/register')} className="h-[34px] px-4 rounded-lg bg-[#4F46E5] hover:bg-indigo-700 text-white text-xs font-semibold shadow-md shadow-indigo-500/15 transition-all cursor-pointer">Register</button>
+            </div>
+          </nav>
+
+          {/* Mobile actions */}
+          <div className="flex md:hidden items-center gap-1.5">
+            <button onClick={toggleTheme} className="w-[34px] h-[34px] rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 transition-all cursor-pointer">
+              {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="w-[34px] h-[34px] rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-all cursor-pointer"
+            >
+              {menuOpen ? <X size={17} /> : <Menu size={17} />}
+            </button>
+          </div>
         </div>
-        <nav className="flex gap-6 items-center">
-          <a href="#features" className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-500 transition-all">Features</a>
-          <a href="#testimonials" className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-500 transition-all">Testimonials</a>
-          <a href="#pricing" className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-indigo-500 transition-all">Pricing</a>
-          <button onClick={toggleTheme} className="h-[36px] w-[36px] rounded-md border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer">
-            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
-          </button>
-          <button onClick={() => navigate('/login')} className="h-[36px] px-4 rounded-md border border-slate-200 dark:border-slate-800 text-xs font-semibold hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer">Login</button>
-          <button onClick={() => navigate('/register')} className="h-[36px] px-4 rounded-md bg-[#4F46E5] hover:bg-indigo-700 text-white text-xs font-semibold shadow-md transition-all cursor-pointer">Register</button>
-        </nav>
+
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div className="md:hidden border-t border-slate-200 dark:border-slate-800/40 bg-white dark:bg-[#090D1A] animate-fade-in">
+            <div className="px-6 py-4 flex flex-col gap-1">
+              <a href="#features" onClick={() => setMenuOpen(false)} className="py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-all">Features</a>
+              <a href="#testimonials" onClick={() => setMenuOpen(false)} className="py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-all">Testimonials</a>
+              <a href="#pricing" onClick={() => setMenuOpen(false)} className="py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-300 hover:text-indigo-500 transition-all">Pricing</a>
+              <hr className="my-2 border-slate-200 dark:border-slate-800" />
+              <button onClick={() => { setMenuOpen(false); navigate('/login'); }} className="w-full py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-700 dark:text-slate-300 transition-all cursor-pointer">Login</button>
+              <button onClick={() => { setMenuOpen(false); navigate('/register'); }} className="w-full py-2.5 rounded-lg bg-[#4F46E5] text-white text-sm font-semibold shadow-md transition-all cursor-pointer">Register</button>
+            </div>
+          </div>
+        )}
       </header>
+
+      <div className="px-6 max-w-[1200px] mx-auto">
 
       {/* Hero Section */}
       <section className="grid grid-cols-1 lg:grid-cols-2 items-center gap-10 py-16 text-left">
@@ -293,6 +329,7 @@ export default function Landing() {
           <a href="#" className="hover:underline">Security</a>
         </div>
       </footer>
+      </div>
     </div>
   );
 }
