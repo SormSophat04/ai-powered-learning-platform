@@ -115,7 +115,7 @@ interface AppStore {
 
 export const useStore = create<AppStore>((set) => ({
   // Global Layout
-  theme: 'light',
+  theme: 'dark',
   role: 'student',
   toggleTheme: () => set((state) => ({ theme: state.theme === 'dark' ? 'light' : 'dark' })),
   setRole: (role) => set({ role }),
