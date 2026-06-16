@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, ArrowRight, Cpu, Award, Activity, Brain, Check, Sun, Moon, Menu, X } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { toggleTheme } from '../store/themeSlice';
 
 const sponsors = [
   { name: 'Apple', img: 'https://cdn.svgporn.com/logos/apple.svg' },
@@ -28,7 +29,8 @@ const sponsors = [
 
 export default function Landing() {
   const navigate = useNavigate();
-  const { theme, toggleTheme } = useStore();
+  const theme = useAppSelector((s) => s.theme.theme);
+  const dispatch = useAppDispatch();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -51,7 +53,7 @@ export default function Landing() {
             <a href="#testimonials" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all">Testimonials</a>
             <a href="#pricing" className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-indigo-500 dark:hover:text-indigo-400 transition-all">Pricing</a>
             <div className="flex items-center gap-2.5 ml-2">
-              <button onClick={toggleTheme} className="h-[34px] w-[34px] rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer">
+              <button onClick={() => dispatch(toggleTheme())} className="h-[34px] w-[34px] rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer">
                 {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
               </button>
               <button onClick={() => navigate('/login')} className="h-[34px] px-4 rounded-lg border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900 transition-all cursor-pointer">Login</button>
@@ -61,7 +63,7 @@ export default function Landing() {
 
           {/* Mobile actions */}
           <div className="flex md:hidden items-center gap-1.5">
-            <button onClick={toggleTheme} className="w-[34px] h-[34px] rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 transition-all cursor-pointer">
+            <button onClick={() => dispatch(toggleTheme())} className="w-[34px] h-[34px] rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center text-slate-500 dark:text-slate-400 transition-all cursor-pointer">
               {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
             </button>
             <button

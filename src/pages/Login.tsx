@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Sun, Moon } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { toggleTheme } from '../store/themeSlice';
+import { setRole } from '../store/authSlice';
+import { authService } from '../services';
 
 interface LoginProps {
   defaultTab?: 'login' | 'register';
@@ -9,18 +12,56 @@ interface LoginProps {
 
 export default function Login({ defaultTab = 'login' }: LoginProps) {
   const navigate = useNavigate();
-  const { role, setRole, theme, toggleTheme } = useStore();
+  const role = useAppSelector((s) => s.auth.role);
+  const theme = useAppSelector((s) => s.theme.theme);
+  const dispatch = useAppDispatch();
   const [activeTab, setActiveTab] = useState<'login' | 'register'>(defaultTab);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (role === 'student') {
-      navigate('/dashboard');
-    } else if (role === 'teacher') {
-      navigate('/dashboard/teacher');
-    } else {
-      navigate('/dashboard');
+    setError('');
+    setLoading(true);
+
+    try {
+      if (activeTab === 'register') {
+        if (password !== confirmPassword) {
+          setError('Passwords do not match');
+          setLoading(false);
+          return;
+        }
+        const res = await authService.register({
+          name,
+          email,
+          password,
+          role: role.toUpperCase() as 'STUDENT' | 'TEACHER',
+        });
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data));
+        dispatch(setRole(res.data.role.toLowerCase() as 'student' | 'teacher' | 'admin'));
+      } else {
+        const res = await authService.login({ email, password });
+        localStorage.setItem('token', res.data.token);
+        localStorage.setItem('user', JSON.stringify(res.data));
+        dispatch(setRole(res.data.role.toLowerCase() as 'student' | 'teacher' | 'admin'));
+      }
+      navigateBasedOnRole(role);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const navigateBasedOnRole = (r: string) => {
+    if (r === 'teacher') navigate('/dashboard/teacher');
+    else if (r === 'admin') navigate('/dashboard/admin');
+    else navigate('/dashboard');
   };
 
   return (
@@ -35,7 +76,7 @@ export default function Login({ defaultTab = 'login' }: LoginProps) {
           <span className="font-heading font-extrabold text-[22px] bg-gradient-to-r from-[#4F46E5] to-[#06B6D4] bg-clip-text text-transparent">
             EduMind AI
           </span>
-          <button onClick={toggleTheme} className="absolute right-0 h-[34px] w-[34px] rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer">
+          <button onClick={() => dispatch(toggleTheme())} className="absolute right-0 h-[34px] w-[34px] rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer">
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
@@ -62,47 +103,54 @@ export default function Login({ defaultTab = 'login' }: LoginProps) {
           {activeTab === 'register' && (
             <div className="form-group text-left">
               <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Full Name</label>
-              <input type="text" required className="form-input text-xs" placeholder="Sarah Jenkins" />
+              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="form-input text-xs" placeholder="Sarah Jenkins" />
+            </div>
+          )}
+
+          {activeTab === 'register' && (
+            <div className="form-group text-left">
+              <label className="form-label text-[11px] font-semibold text-slate-400 mb-1.5">Sign in as Role</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button 
+                  type="button" 
+                  onClick={() => dispatch(setRole('student'))}
+                  className={`py-2 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${role === 'student' ? 'bg-gradient-to-r from-indigo-500/10 to-[#4F46E5]/15 border-[#4F46E5] text-[#4F46E5] dark:text-indigo-400 font-extrabold' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                >
+                  Student
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => dispatch(setRole('teacher'))}
+                  className={`py-2 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${role === 'teacher' ? 'bg-gradient-to-r from-cyan-500/10 to-[#06B6D4]/15 border-[#06B6D4] text-[#06B6D4] dark:text-cyan-400 font-extrabold' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+                >
+                  Teacher
+                </button>
+              </div>
             </div>
           )}
 
           <div className="form-group text-left">
             <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Email Address</label>
-            <input type="email" required defaultValue="student@edumind.edu" className="form-input text-xs" placeholder="name@domain.edu" />
+            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="form-input text-xs" placeholder="name@domain.edu" />
           </div>
 
           <div className="form-group text-left">
             <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Password</label>
-            <input type="password" required defaultValue="password" className="form-input text-xs" placeholder="••••••••" />
+            <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="form-input text-xs" placeholder="••••••••" />
           </div>
 
           {activeTab === 'register' && (
             <div className="form-group text-left">
               <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Confirm Password</label>
-              <input type="password" required className="form-input text-xs" placeholder="••••••••" />
+              <input type="password" required value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="form-input text-xs" placeholder="••••••••" />
             </div>
           )}
 
-          {/* Role selector */}
-          <div className="form-group text-left">
-            <label className="form-label text-[11px] font-semibold text-slate-400 mb-1.5">Sign in as Role</label>
-            <div className="grid grid-cols-2 gap-2">
-              <button 
-                type="button" 
-                onClick={() => setRole('student')}
-                className={`py-2 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${role === 'student' ? 'bg-gradient-to-r from-indigo-500/10 to-[#4F46E5]/15 border-[#4F46E5] text-[#4F46E5] dark:text-indigo-400 font-extrabold' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              >
-                Student
-              </button>
-              <button 
-                type="button" 
-                onClick={() => setRole('teacher')}
-                className={`py-2 text-[11px] font-bold rounded-lg border transition-all cursor-pointer ${role === 'teacher' ? 'bg-gradient-to-r from-cyan-500/10 to-[#06B6D4]/15 border-[#06B6D4] text-[#06B6D4] dark:text-cyan-400 font-extrabold' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
-              >
-                Teacher
-              </button>
-            </div>
-          </div>
+          {error && (
+            <div className="text-[11px] font-semibold text-red-500 bg-red-500/10 rounded-lg p-2.5 text-left">{error}</div>
+          )}
+
+          
 
           <div className="flex justify-between items-center text-[11px] font-semibold pt-1">
             <label className="flex items-center gap-1.5 cursor-pointer text-slate-500 select-none">
@@ -111,13 +159,18 @@ export default function Login({ defaultTab = 'login' }: LoginProps) {
             <a href="#" onClick={(e) => e.preventDefault()} className="text-[#4F46E5] hover:underline">Forgot Password?</a>
           </div>
 
-          <button type="submit" className="w-full py-3 rounded-lg bg-[#4F46E5] hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-500/15 cursor-pointer transition-all mt-6">
-            {activeTab === 'login' ? 'Sign In' : 'Create Account'}
+          <button type="submit" disabled={loading} className="w-full py-3 rounded-lg bg-[#4F46E5] hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-indigo-500/15 cursor-pointer transition-all mt-6">
+            {loading ? 'Please wait...' : activeTab === 'login' ? 'Sign In' : 'Create Account'}
           </button>
 
           <button 
             type="button" 
-            onClick={() => navigate('/dashboard')}
+            onClick={() => authService.login({ email: 'student@edumind.edu', password: 'password' }).then(r => {
+              localStorage.setItem('token', r.data.token);
+              localStorage.setItem('user', JSON.stringify(r.data));
+              dispatch(setRole(r.data.role.toLowerCase() as 'student' | 'teacher' | 'admin'));
+              navigate('/dashboard');
+            }).catch(() => navigate('/dashboard'))}
             className="w-full py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">

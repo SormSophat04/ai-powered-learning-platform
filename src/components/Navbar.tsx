@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import {
   Search, Menu, X, GraduationCap, BookOpen, FileText,
   Award, TrendingUp, Brain, Users, ShieldAlert, Bell, Sun, Moon,
   LayoutDashboard, ChevronDown, LogOut, Settings, MoreHorizontal
 } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { toggleTheme } from '../store/themeSlice';
+import { setRole } from '../store/authSlice';
 
 function isActivePath(location: ReturnType<typeof useLocation>, target: string) {
   if (target === '/dashboard') return location.pathname === '/dashboard';
@@ -34,7 +36,10 @@ function getScreenConfig(path: string) {
 
 export default function Navbar() {
   const location = useLocation();
-  const { role, theme, toggleTheme } = useStore();
+  const role = useAppSelector((s) => s.auth.role);
+  const theme = useAppSelector((s) => s.theme.theme);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -124,7 +129,7 @@ export default function Navbar() {
             </button>
 
             <button
-              onClick={toggleTheme}
+              onClick={() => dispatch(toggleTheme())}
               className="w-[34px] h-[34px] flex items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
             >
               {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
@@ -162,10 +167,10 @@ export default function Navbar() {
                         <Settings size={14} />
                         Settings
                       </Link>
-                      <Link to="/" onClick={() => setProfileOpen(false)} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all">
+                      <button onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); dispatch(setRole('student')); setProfileOpen(false); navigate('/'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all w-full cursor-pointer">
                         <LogOut size={14} />
                         Logout
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 </>
@@ -270,7 +275,7 @@ export default function Navbar() {
               {/* Theme toggle */}
               <div className="px-4 pb-6 pt-2 border-t border-slate-100 dark:border-slate-800/60">
                 <button
-                  onClick={toggleTheme}
+                  onClick={() => dispatch(toggleTheme())}
                   className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-slate-100 dark:bg-slate-800/60 text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all cursor-pointer"
                 >
                   {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}

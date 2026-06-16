@@ -1,9 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Brain } from 'lucide-react';
 import { PerformanceChart, SubjectStrengthRadar, StudyHoursBar } from '../components/Charts';
-import { learningAnalytics } from '../mockData';
+import { analyticsService } from '../services';
+import type { AnalyticsData } from '../services';
 
 export default function Analytics() {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      analyticsService.getPerformance(),
+      analyticsService.getSubjectStrengths(),
+      analyticsService.getStudyHours(),
+      analyticsService.getGradePrediction(),
+    ]).then(([perf, strength, hours, prediction]) => {
+      setData({
+        performanceHistory: perf.data.performanceHistory,
+        subjectStrengths: strength.data.subjectStrengths,
+        studyHours: hours.data.studyHours,
+        aiPrediction: prediction.data.aiPrediction,
+      });
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
       <h2 className="text-xl font-heading font-black text-slate-900 dark:text-white">Learning Performance Analytics</h2>
@@ -14,21 +42,21 @@ export default function Analytics() {
           <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">
             Academic Score Progress
           </h3>
-          <PerformanceChart />
+          <PerformanceChart data={data?.performanceHistory} />
         </div>
 
         <div className="glass-panel p-5 border border-slate-200/60 dark:border-slate-800/40">
           <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">
             Syllabus Strength Radar
           </h3>
-          <SubjectStrengthRadar />
+          <SubjectStrengthRadar data={data?.subjectStrengths} />
         </div>
 
         <div className="glass-panel p-5 border border-slate-200/60 dark:border-slate-800/40">
           <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">
             Weekly Study Hours Allocation
           </h3>
-          <StudyHoursBar />
+          <StudyHoursBar data={data?.studyHours} />
         </div>
       </div>
 
@@ -47,11 +75,11 @@ export default function Analytics() {
           {/* Prediction Visual */}
           <div className="flex flex-col items-center">
             <div className="w-[120px] h-[120px] rounded-full bg-gradient-to-br from-[#4F46E5] to-[#06B6D4] flex flex-col items-center justify-center text-white shadow-lg shadow-indigo-500/15">
-              <span className="text-4xl font-black font-heading leading-none">{learningAnalytics.aiPrediction.grade}</span>
+              <span className="text-4xl font-black font-heading leading-none">{data?.aiPrediction.grade || 'N/A'}</span>
               <span className="text-[9px] uppercase tracking-wider font-bold opacity-80 mt-1">Predicted</span>
             </div>
             <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 mt-3.5 block">
-              Confidence level: {learningAnalytics.aiPrediction.confidence}%
+              Confidence level: {data?.aiPrediction.confidence || 0}%
             </span>
           </div>
 
@@ -59,7 +87,7 @@ export default function Analytics() {
           <div className="space-y-4">
             <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">Target Strategy Milestones</h4>
             <div className="space-y-3">
-              {learningAnalytics.aiPrediction.insights.map((ins, i) => (
+              {(data?.aiPrediction.insights || []).map((ins, i) => (
                 <div key={i} className="flex gap-2.5 items-start">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#4f46e5] mt-1.5 flex-shrink-0"></div>
                   <p className="text-xs text-slate-500 dark:text-slate-450 leading-relaxed">{ins}</p>

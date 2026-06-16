@@ -1,42 +1,61 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Upload, FileCheck, Sparkles, Check, FileText } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { setAssignments, setActiveAssignmentId, setUploadedFile, setUploadProgress, setAiFeedback, submitAssignment } from '../store/assignmentsSlice';
+import { assignmentService } from '../services';
 
 export default function Assignments() {
-  const {
-    assignments, activeAssignmentId, uploadedFile, uploadProgress, aiFeedback,
-    setActiveAssignmentId, setUploadedFile, setUploadProgress, setAiFeedback, submitAssignment
-  } = useStore();
+  const assignments = useAppSelector((s) => s.assignments.assignments);
+  const activeAssignmentId = useAppSelector((s) => s.assignments.activeAssignmentId);
+  const uploadedFile = useAppSelector((s) => s.assignments.uploadedFile);
+  const uploadProgress = useAppSelector((s) => s.assignments.uploadProgress);
+  const aiFeedback = useAppSelector((s) => s.assignments.aiFeedback);
+  const dispatch = useAppDispatch();
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    assignmentService.getAssignments().then(res => {
+      dispatch(setAssignments(res.data.map(a => ({
+        id: String(a.id),
+        title: a.title,
+        course: a.courseName,
+        dueDate: a.dueDate,
+        status: a.status,
+        score: a.score,
+        feedback: a.feedback,
+        file: a.fileUrl,
+      }))));
+    }).catch(console.error);
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
-    const fileName = file ? file.name : 'oop_report_draft.pdf';
+    const fileName = file ? file.name : 'report.pdf';
     
-    setUploadedFile(fileName);
-    setUploadProgress(10);
-    setAiFeedback(null);
+    dispatch(setUploadedFile(fileName));
+    dispatch(setUploadProgress(10));
+    dispatch(setAiFeedback(null));
 
-    const interval = setInterval(() => {
-      setUploadProgress(10); // set to incremental progress
-    }, 100);
-
-    setTimeout(() => {
-      clearInterval(interval);
-      setUploadProgress(100);
-      
-      const feedback = {
-        grammar: 94,
-        logic: 88,
-        completeness: 92,
-        text: "AI check successful. The codebase structured polymorphic abstract definitions correctly. Recommend renaming helper classes to comply with camelCase guidelines."
-      };
-      
-      setAiFeedback(feedback);
-      submitAssignment(activeAssignmentId, fileName, feedback);
-    }, 1200);
+    try {
+      const res = await assignmentService.submitAssignment(Number(activeAssignmentId), fileName);
+      dispatch(setUploadProgress(100));
+      const feedback = res.data.feedback;
+      dispatch(setAiFeedback(feedback));
+      dispatch(submitAssignment({ asgId: activeAssignmentId, file: fileName, feedback }));
+    } catch (err) {
+      console.error('Upload failed:', err);
+      dispatch(setUploadProgress(0));
+    }
   };
 
   const activeAsg = assignments.find(a => a.id === activeAssignmentId) || assignments[0];
+
+  if (!activeAsg) {
+    return (
+      <div className="flex items-center justify-center h-64 text-slate-400 text-xs">
+        Loading assignments...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
@@ -52,10 +71,10 @@ export default function Assignments() {
               <div 
                 key={asg.id}
                 onClick={() => {
-                  setActiveAssignmentId(asg.id);
-                  setUploadedFile(asg.file);
-                  setUploadProgress(asg.file ? 100 : 0);
-                  setAiFeedback(asg.feedback);
+                  dispatch(setActiveAssignmentId(asg.id));
+                  dispatch(setUploadedFile(asg.file));
+                  dispatch(setUploadProgress(asg.file ? 100 : 0));
+                  dispatch(setAiFeedback(asg.feedback));
                 }}
                 className={`glass-card p-5 cursor-pointer text-left transition-all border border-slate-200/60 ${
                   isActive 
@@ -117,7 +136,7 @@ export default function Assignments() {
                   </div>
                 </div>
                 <button 
-                  onClick={() => { setUploadedFile(null); setAiFeedback(null); }}
+                  onClick={() => { dispatch(setUploadedFile(null)); dispatch(setAiFeedback(null)); }}
                   className="py-1 px-2.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] rounded-md font-semibold cursor-pointer"
                 >
                   Remove

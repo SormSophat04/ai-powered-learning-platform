@@ -1,16 +1,40 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, FileText, Award, Activity, ChevronRight } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { setCoursesList, setSelectedCourse } from '../store/coursesSlice';
 import { StatCard, ActivityCard } from '../components/Cards';
 import { PerformanceChart, StudyHoursBar } from '../components/Charts';
-import { initialStudentStats } from '../mockData';
+import { dashboardService, courseService } from '../services';
+import type { DashboardStats, ActivityEntry, CourseSummary } from '../services';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { coursesList, setSelectedCourse, assignments } = useStore();
+  const coursesList = useAppSelector((s) => s.courses.coursesList);
+  const dispatch = useAppDispatch();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [activities, setActivities] = useState<ActivityEntry[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const pendingCount = assignments.filter(a => a.status === 'Pending').length;
+  useEffect(() => {
+    Promise.all([
+      dashboardService.getStats(),
+      dashboardService.getRecentActivity(),
+      courseService.getCourses(),
+    ]).then(([statsRes, activityRes, coursesRes]) => {
+      setStats(statsRes.data);
+      setActivities(activityRes.data.recentActivity);
+      dispatch(setCoursesList(coursesRes.data));
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -18,26 +42,26 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Courses Enrolled" 
-          value={initialStudentStats.coursesEnrolled} 
+          value={stats?.coursesEnrolled ?? 0} 
           icon={<BookOpen size={20} />} 
         />
         <StatCard 
           title="Assignments Pending" 
-          value={pendingCount} 
+          value={stats?.assignmentsPending ?? 0} 
           icon={<FileText size={20} />} 
           iconBgColor="bg-amber-500/10" 
           iconColor="text-amber-500" 
         />
         <StatCard 
           title="Current GPA" 
-          value={initialStudentStats.currentGPA} 
+          value={stats?.currentGpa ?? 0} 
           icon={<Award size={20} />} 
           iconBgColor="bg-cyan-500/10" 
           iconColor="text-cyan-500" 
         />
         <StatCard 
           title="Learning Streak" 
-          value={`${initialStudentStats.learningStreak} Days`} 
+          value={`${stats?.learningStreak ?? 0} Days`} 
           icon={<Activity size={20} />} 
           iconBgColor="bg-emerald-500/10" 
           iconColor="text-emerald-500" 
@@ -67,13 +91,13 @@ export default function Dashboard() {
         <div className="glass-panel p-6 text-left border border-slate-200/60 dark:border-slate-800/40">
           <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">Enrolled Courses</h3>
           <div className="space-y-3.5">
-            {coursesList.map(course => (
+            {coursesList.map((course: any) => (
               <div 
                 key={course.id} 
-                onClick={() => { setSelectedCourse(course); navigate('/dashboard/courses'); }}
+                onClick={() => { dispatch(setSelectedCourse(course)); navigate('/dashboard/courses'); }}
                 className="glass-card p-4 flex items-center gap-4 cursor-pointer border border-slate-200/60 dark:border-white/5"
               >
-                <img src={course.image} className="w-16 h-11 rounded-lg object-cover" alt={course.title} />
+                <img src={course.imageUrl || course.image} className="w-16 h-11 rounded-lg object-cover" alt={course.title} />
                 <div className="flex-grow min-w-0">
                   <h4 className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate mb-1">{course.title}</h4>
                   <div className="flex items-center gap-3">
@@ -93,7 +117,7 @@ export default function Dashboard() {
         <div className="glass-panel p-6 text-left border border-slate-200/60 dark:border-slate-800/40">
           <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">Academic Activity Log</h3>
           <div className="space-y-4">
-            {initialStudentStats.recentActivity.map(act => (
+            {activities.map(act => (
               <ActivityCard 
                 key={act.id} 
                 text={act.text} 

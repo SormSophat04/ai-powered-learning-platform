@@ -1,10 +1,28 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Activity, Cpu, Brain, Users } from 'lucide-react';
 import { StatCard } from '../components/Cards';
 import { AdminApiRequests } from '../components/Charts';
-import { adminDashboardData } from '../mockData';
+import { adminService } from '../services';
+import type { AdminDashboardData } from '../services';
 
 export default function Admin() {
+  const [data, setData] = useState<AdminDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    adminService.getStats().then(res => {
+      setData(res.data);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
 
@@ -12,26 +30,26 @@ export default function Admin() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Total Active Users"
-          value={adminDashboardData.stats.totalActiveUsers}
+          value={data?.stats.totalActiveUsers ?? 0}
           icon={<Activity size={20} />}
         />
         <StatCard
           title="CPU Uptime SLA"
-          value={adminDashboardData.stats.systemUptime}
+          value={data?.stats.systemUptime ?? 'N/A'}
           icon={<Cpu size={20} />}
           iconBgColor="bg-cyan-500/10"
           iconColor="text-cyan-500"
         />
         <StatCard
           title="AI Requests (Today)"
-          value={adminDashboardData.stats.aiRequestsToday.toLocaleString()}
+          value={(data?.stats.aiRequestsToday ?? 0).toLocaleString()}
           icon={<Brain size={20} />}
           iconBgColor="bg-amber-500/10"
           iconColor="text-amber-500"
         />
         <StatCard
           title="Active Servers"
-          value={`${adminDashboardData.stats.activeServers} / 4`}
+          value={`${data?.stats.activeServers ?? 0} / 4`}
           icon={<Users size={20} />}
           iconBgColor="bg-emerald-500/10"
           iconColor="text-emerald-500"
@@ -46,20 +64,23 @@ export default function Admin() {
             User Role Distribution
           </h3>
           <div className="space-y-5">
-            {adminDashboardData.roleDistribution.map(rd => (
-              <div key={rd.role} className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="font-bold text-slate-800 dark:text-slate-100">{rd.role}s</span>
-                  <span className="text-slate-400 dark:text-slate-500 font-semibold">{rd.count} users</span>
+            {(data?.roleDistribution || []).map(rd => {
+              const totalUsers = data?.stats.totalActiveUsers || 1;
+              return (
+                <div key={rd.role} className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-100">{rd.role}s</span>
+                    <span className="text-slate-400 dark:text-slate-500 font-semibold">{rd.count} users</span>
+                  </div>
+                  <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-700"
+                      style={{ width: `${(rd.count / totalUsers) * 100}%`, backgroundColor: rd.color }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="w-full h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${(rd.count / 1850) * 100}%`, backgroundColor: rd.color }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -68,7 +89,7 @@ export default function Admin() {
           <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">
             API Usage Statistics (Requests / Hour)
           </h3>
-          <AdminApiRequests />
+          <AdminApiRequests data={data?.aiUsageStats} />
         </div>
       </div>
 
@@ -78,7 +99,7 @@ export default function Admin() {
           System Activity Logs
         </h3>
         <div className="space-y-0">
-          {adminDashboardData.activityLogs.map(log => (
+          {(data?.activityLogs || []).map(log => (
             <div
               key={log.id}
               className="grid grid-cols-1 md:grid-cols-[180px_1fr_120px] gap-3 md:gap-6 items-center py-3.5 px-2 border-b border-slate-200/60 dark:border-slate-800/40 last:border-b-0 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors rounded-lg"

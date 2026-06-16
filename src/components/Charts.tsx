@@ -5,10 +5,6 @@ import {
   PolarAngleAxis, PolarRadiusAxis, Radar 
 } from 'recharts';
 
-// Mock Data
-import { learningAnalytics, adminDashboardData } from '../mockData';
-
-// Custom Tooltip component
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -25,11 +21,17 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function PerformanceChart() {
+interface PerformanceEntry { week: string; score: number; avg: number }
+interface SubjectStrength { subject: string; score: number; limit: number }
+interface StudyHourEntry { day: string; hours: number }
+interface AiUsageEntry { time: string; requests: number }
+
+export function PerformanceChart({ data }: { data?: PerformanceEntry[] }) {
+  const chartData = data || [];
   return (
     <div className="w-full h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={learningAnalytics.performanceHistory} margin={{ top: 10, right: 10, left: -25, bottom: 5 }}>
+        <LineChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:hidden" />
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" className="hidden dark:block" />
           <XAxis dataKey="week" stroke="#94a3b8" fontSize={10} tickLine={false} />
@@ -60,11 +62,12 @@ export function PerformanceChart() {
   );
 }
 
-export function SubjectStrengthRadar() {
+export function SubjectStrengthRadar({ data }: { data?: SubjectStrength[] }) {
+  const chartData = data || [];
   return (
     <div className="w-full h-[280px] flex items-center justify-center">
       <ResponsiveContainer width="100%" height="100%">
-        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={learningAnalytics.subjectStrengths}>
+        <RadarChart cx="50%" cy="50%" outerRadius="75%" data={chartData}>
           <PolarGrid stroke="#94a3b8" strokeOpacity={0.2} />
           <PolarAngleAxis dataKey="subject" stroke="#94a3b8" fontSize={9} />
           <PolarRadiusAxis stroke="#94a3b8" fontSize={9} angle={30} domain={[0, 100]} tickLine={false} />
@@ -81,11 +84,12 @@ export function SubjectStrengthRadar() {
   );
 }
 
-export function StudyHoursBar() {
+export function StudyHoursBar({ data }: { data?: StudyHourEntry[] }) {
+  const chartData = data || [];
   return (
     <div className="w-full h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={learningAnalytics.studyHours} margin={{ top: 10, right: 10, left: -25, bottom: 5 }}>
+        <BarChart data={chartData} margin={{ top: 10, right: 10, left: -25, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" className="dark:hidden" />
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" className="hidden dark:block" />
           <XAxis dataKey="day" stroke="#94a3b8" fontSize={10} tickLine={false} />
@@ -98,11 +102,12 @@ export function StudyHoursBar() {
   );
 }
 
-export function AdminApiRequests() {
+export function AdminApiRequests({ data }: { data?: AiUsageEntry[] }) {
+  const chartData = data || [];
   return (
     <div className="w-full h-[280px]">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={adminDashboardData.aiUsageStats} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
+        <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
           <XAxis dataKey="time" stroke="#94a3b8" fontSize={9} />
           <YAxis stroke="#94a3b8" fontSize={9} />
