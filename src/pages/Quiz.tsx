@@ -1,23 +1,35 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Brain, Clock, Sparkles, Check, X } from 'lucide-react';
-import { useStore } from '../store/useStore';
-import { mockQuizzes } from '../mockData';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import {
+  setQuizTopic, setQuizDifficulty, setQuizCount, startQuiz,
+  selectQuizAnswer, nextQuizQuestion, prevQuizQuestion,
+  incrementTimer, resetQuiz, finishQuiz,
+} from '../store/quizSlice';
+import { quizService } from '../services';
 
 export default function Quiz() {
-  const {
-    quizTopic, quizDifficulty, quizCount, quizRunning, currentQuiz, 
-    quizCurrentIndex, quizSelectedAnswer, quizAnswersRecord, quizTimer, 
-    quizScore, quizCompleted, setQuizTopic, setQuizDifficulty, setQuizCount, 
-    startQuiz, selectQuizAnswer, nextQuizQuestion, prevQuizQuestion, 
-    incrementTimer, resetQuiz
-  } = useStore();
+  const quizTopic = useAppSelector((s) => s.quiz.quizTopic);
+  const quizDifficulty = useAppSelector((s) => s.quiz.quizDifficulty);
+  const quizCount = useAppSelector((s) => s.quiz.quizCount);
+  const quizRunning = useAppSelector((s) => s.quiz.quizRunning);
+  const currentQuiz = useAppSelector((s) => s.quiz.currentQuiz);
+  const quizCurrentIndex = useAppSelector((s) => s.quiz.quizCurrentIndex);
+  const quizSelectedAnswer = useAppSelector((s) => s.quiz.quizSelectedAnswer);
+  const quizAnswersRecord = useAppSelector((s) => s.quiz.quizAnswersRecord);
+  const quizTimer = useAppSelector((s) => s.quiz.quizTimer);
+  const quizScore = useAppSelector((s) => s.quiz.quizScore);
+  const quizCompleted = useAppSelector((s) => s.quiz.quizCompleted);
+  const dispatch = useAppDispatch();
+  const [generating, setGenerating] = useState(false);
+  const [quizResult, setQuizResult] = useState<any>(null);
 
   const timerRef = useRef<any>(null);
 
   useEffect(() => {
     if (quizRunning && !quizCompleted) {
       timerRef.current = setInterval(() => {
-        incrementTimer();
+        dispatch(incrementTimer());
       }, 1000);
     } else {
       clearInterval(timerRef.current);
@@ -31,9 +43,16 @@ export default function Quiz() {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStartQuiz = () => {
-    const quizSet = mockQuizzes['java-oop']; // Default set
-    startQuiz(quizSet);
+  const handleStartQuiz = async () => {
+    setGenerating(true);
+    try {
+      const res = await quizService.generate(quizTopic, quizDifficulty, quizCount);
+      dispatch(startQuiz(res.data));
+    } catch (err) {
+      console.error('Failed to generate quiz:', err);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -50,7 +69,7 @@ export default function Quiz() {
               <label className="form-label text-[11px] font-semibold text-slate-400 mb-1.5">Learning Syllabus Topic</label>
               <select 
                 value={quizTopic} 
-                onChange={(e) => setQuizTopic(e.target.value)}
+                onChange={(e) => dispatch(setQuizTopic(e.target.value))}
                 className="form-input text-xs"
               >
                 <option value="Java OOP">Java OOP Foundations (Polymorphism, Interfaces)</option>
@@ -67,7 +86,7 @@ export default function Quiz() {
                     <button 
                       key={diff}
                       type="button"
-                      onClick={() => setQuizDifficulty(diff)}
+                      onClick={() => dispatch(setQuizDifficulty(diff))}
                       className={`flex-grow py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                         quizDifficulty === diff 
                           ? 'bg-[#4F46E5] text-white border-[#4F46E5]' 
@@ -84,7 +103,7 @@ export default function Quiz() {
                 <label className="form-label text-[11px] font-semibold text-slate-400 mb-1.5">Question Count</label>
                 <select 
                   value={quizCount} 
-                  onChange={(e) => setQuizCount(Number(e.target.value))}
+                  onChange={(e) => dispatch(setQuizCount(Number(e.target.value)))}
                   className="form-input text-xs"
                 >
                   <option value={5}>5 Questions (Express)</option>
@@ -96,9 +115,10 @@ export default function Quiz() {
 
             <button 
               onClick={handleStartQuiz}
-              className="w-full py-3 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/15 flex items-center justify-center gap-1.5 cursor-pointer mt-6"
+              disabled={generating}
+              className="w-full py-3 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-indigo-500/15 flex items-center justify-center gap-1.5 cursor-pointer mt-6"
             >
-              Generate AI Quiz <Sparkles size={14} />
+              {generating ? 'Generating...' : 'Generate AI Quiz'} <Sparkles size={14} />
             </button>
           </div>
         </div>
@@ -143,7 +163,7 @@ export default function Quiz() {
                   return (
                     <div 
                       key={idx}
-                      onClick={() => selectQuizAnswer(idx)}
+                      onClick={() => dispatch(selectQuizAnswer(idx))}
                       className={`flex items-center gap-3.5 p-4 rounded-xl border transition-all cursor-pointer ${
                         isSelected 
                           ? 'border-[#4F46E5] bg-[#4F46E5]/10 text-[#4F46E5] dark:text-indigo-400 font-bold' 
@@ -166,14 +186,25 @@ export default function Quiz() {
               {/* Navigation buttons */}
               <div className="flex justify-between items-center border-t border-slate-250 dark:border-slate-850 pt-5">
                 <button 
-                  onClick={prevQuizQuestion} 
+                  onClick={() => dispatch(prevQuizQuestion())} 
                   disabled={quizCurrentIndex === 0}
                   className="px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
                 <button 
-                  onClick={nextQuizQuestion} 
+                    onClick={() => {
+                    if (quizCurrentIndex + 1 === currentQuiz.questions.length) {
+                      const newRecord = [...quizAnswersRecord];
+                      newRecord[quizCurrentIndex] = quizSelectedAnswer;
+                      quizService.submit(currentQuiz.attemptId, JSON.stringify(newRecord)).then(res => {
+                        dispatch(finishQuiz({ score: res.data.score, answersRecord: newRecord, result: res.data }));
+                        setQuizResult(res.data);
+                      }).catch(console.error);
+                    } else {
+                      dispatch(nextQuizQuestion());
+                    }
+                  }}
                   disabled={quizSelectedAnswer === null}
                   className="px-4 py-2.5 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
@@ -197,7 +228,7 @@ export default function Quiz() {
                 {quizScore! >= 70 ? 'Congratulations! You Passed.' : 'Keep Practicing!'}
               </h2>
               <p className="text-xs text-slate-400 dark:text-slate-500 mb-8 max-w-[400px] mx-auto">
-                You successfully resolved {quizAnswersRecord.filter((ans, i) => ans === currentQuiz.questions[i].answer).length} out of {currentQuiz.questions.length} questions correctly.
+                You successfully resolved {quizResult?.correctCount ?? quizAnswersRecord.filter((ans, i) => ans === currentQuiz.questions[i].answer).length} out of {quizResult?.totalCount ?? currentQuiz.questions.length} questions correctly.
               </p>
 
               <div className="border-b border-slate-250 dark:border-slate-850 pb-2 mb-4 text-left">
@@ -205,11 +236,20 @@ export default function Quiz() {
               </div>
 
               <div className="space-y-4 text-left max-h-[320px] overflow-y-auto pr-1 mb-8">
-                {currentQuiz.questions.map((q: any, idx: number) => {
-                  const correct = quizAnswersRecord[idx] === q.answer;
+                {(quizResult?.results ?? currentQuiz.questions.map((q: any, idx: number) => ({
+                  questionId: q.id,
+                  question: q.question,
+                  options: q.options,
+                  correctAnswer: q.answer,
+                  yourAnswer: quizAnswersRecord[idx],
+                  correct: quizAnswersRecord[idx] === q.answer,
+                  explanation: q.explanation || ''
+                }))).map((r: any, idx: number) => {
+                  const correct = r.correct;
+                  const opts = r.options || [];
                   return (
                     <div 
-                      key={q.id}
+                      key={r.questionId || idx}
                       className={`p-4 rounded-xl border bg-white dark:bg-slate-900/20 text-xs ${
                         correct 
                           ? 'border-emerald-500/30' 
@@ -218,18 +258,18 @@ export default function Quiz() {
                     >
                       <h4 className="font-bold text-slate-900 dark:text-slate-100 flex items-start gap-2 mb-2 leading-relaxed">
                         {correct ? <Check size={14} className="text-emerald-500 mt-0.5 flex-shrink-0" /> : <X size={14} className="text-rose-500 mt-0.5 flex-shrink-0" />}
-                        Question {idx + 1}: {q.question}
+                        Question {idx + 1}: {r.question}
                       </h4>
                       <p className="text-slate-500 dark:text-slate-400 mb-1">
-                        Your Answer: <strong className={correct ? 'text-emerald-500' : 'text-rose-500'}>{q.options[quizAnswersRecord[idx]!] || 'Unanswered'}</strong>
+                        Your Answer: <strong className={correct ? 'text-emerald-500' : 'text-rose-500'}>{opts[r.yourAnswer] || 'Unanswered'}</strong>
                       </p>
                       {!correct && (
                         <p className="text-slate-500 dark:text-slate-400 mb-1">
-                          Correct Choice: <strong className="text-emerald-500">{q.options[q.answer]}</strong>
+                          Correct Choice: <strong className="text-emerald-500">{opts[r.correctAnswer]}</strong>
                         </p>
                       )}
                       <p className="text-slate-500 dark:text-slate-400 italic pl-3 border-l-2 border-[#4F46E5] mt-2.5 leading-normal">
-                        <strong>AI Explanation:</strong> {q.explanation}
+                        <strong>AI Explanation:</strong> {r.explanation}
                       </p>
                     </div>
                   );
@@ -237,7 +277,7 @@ export default function Quiz() {
               </div>
 
               <button 
-                onClick={resetQuiz}
+                onClick={() => dispatch(resetQuiz())}
                 className="px-6 py-2.5 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/10 cursor-pointer"
               >
                 Close & Return

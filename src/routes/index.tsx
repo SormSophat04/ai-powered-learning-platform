@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from '../layouts/DashboardLayout';
+import ProtectedRoute from '../components/ProtectedRoute';
+import RoleRoute from '../components/RoleRoute';
 
 // Pages
 import Landing from '../pages/Landing';
@@ -22,7 +24,7 @@ export default function AppRoutes() {
       <Route path="/login" element={<Login defaultTab="login" />} />
       <Route path="/register" element={<Login defaultTab="register" />} />
       
-      <Route path="/dashboard" element={<DashboardLayout />}>
+      <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
         <Route index element={<Dashboard />} />
         <Route path="courses" element={<Courses />} />
         <Route path="chat" element={<AIChat />} />
@@ -30,8 +32,8 @@ export default function AppRoutes() {
         <Route path="quiz" element={<Quiz />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="learning-path" element={<LearningPath />} />
-        <Route path="teacher" element={<Teacher />} />
-        <Route path="admin" element={<Admin />} />
+        <Route path="teacher" element={<RoleRoute allowedRoles={['teacher', 'admin']}><Teacher /></RoleRoute>} />
+        <Route path="admin" element={<RoleRoute allowedRoles={['admin']}><Admin /></RoleRoute>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

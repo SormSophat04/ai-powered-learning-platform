@@ -1,6 +1,6 @@
 import React from 'react';
 import { User, Cpu, Upload, Volume2, Send } from 'lucide-react';
-import { ChatMessage } from '../store/useStore';
+import type { ChatMessage } from '../types';
 
 interface ChatMessageBubbleProps {
   msg: ChatMessage;

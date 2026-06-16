@@ -1,35 +1,61 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Play, FileText, CheckCircle2, ChevronRight, Brain, Send } from 'lucide-react';
-import { useStore, Lesson } from '../store/useStore';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { setSelectedCourse, setActiveLesson } from '../store/coursesSlice';
+import { addChatMessage, setActiveChatId, setAiTyping } from '../store/chatSlice';
+import type { Lesson } from '../types';
+import { courseService, chatService } from '../services';
+import type { CourseDetail, ModuleDto, LessonDto } from '../services';
 
 export default function Courses() {
-  const { selectedCourse, activeLesson, setActiveLesson, chatHistory, addChatMessage, aiTyping, setAiTyping } = useStore();
+  const selectedCourse = useAppSelector((s) => s.courses.selectedCourse);
+  const activeLesson = useAppSelector((s) => s.courses.activeLesson);
+  const chatHistory = useAppSelector((s) => s.chat.chatHistory);
+  const aiTyping = useAppSelector((s) => s.chat.aiTyping);
+  const activeChatId = useAppSelector((s) => s.chat.activeChatId);
+  const dispatch = useAppDispatch();
   const [assistantInput, setAssistantInput] = useState('');
+  const [courseDetail, setCourseDetail] = useState<CourseDetail | null>(null);
+  const [_, setActiveConvId] = useState<number | null>(null);
 
-  const handleSendAssistantMessage = () => {
+  useEffect(() => {
+    if (selectedCourse?.id) {
+      courseService.getCourseDetail(Number(selectedCourse.id)).then(res => {
+        setCourseDetail(res.data);
+        if (res.data.modules?.[0]?.lessons?.[0]) {
+          dispatch(setActiveLesson({
+            id: String(res.data.modules[0].lessons[0].id),
+            title: res.data.modules[0].lessons[0].title,
+            duration: res.data.modules[0].lessons[0].duration,
+            type: res.data.modules[0].lessons[0].type,
+          }));
+        }
+      }).catch(console.error);
+    }
+  }, [selectedCourse?.id]);
+
+  const handleSendAssistantMessage = async () => {
     if (!assistantInput.trim()) return;
-
-    // User prompt
-    addChatMessage({ id: Date.now(), sender: 'student', text: assistantInput });
     const userText = assistantInput;
     setAssistantInput('');
+    dispatch(addChatMessage({ id: Date.now(), sender: 'student', text: userText }));
+    dispatch(setAiTyping(true));
 
-    // AI thinking stream
-    setAiTyping(true);
-
-    setTimeout(() => {
-      let replyText = `I have analyzed your query regarding: "${userText}" in the context of "${activeLesson.title}". `;
-      if (userText.toLowerCase().includes('interface')) {
-        replyText += "An Interface in Java is a reference type similar to a class, containing only constants, method signatures, default methods, static methods, and nested types. It achieves complete abstraction and multiple inheritance.";
-      } else if (userText.toLowerCase().includes('abstract class')) {
-        replyText += "An Abstract Class in Java is a class that cannot be instantiated. It can contain concrete methods (with implementation) and instance variables, which interfaces cannot hold (prior to Java 8 interfaces could not have bodies).";
-      } else {
-        replyText += "Focus on implementation details, overriding behaviors, and concrete usages. Let me know if you would like me to compile a code snippet.";
+    try {
+      let convId = activeChatId;
+      if (!convId) {
+        const conv = await chatService.createConversation(userText.slice(0, 50));
+        convId = conv.data.id;
+        dispatch(setActiveChatId(convId));
+        setActiveConvId(convId);
       }
-
-      addChatMessage({ id: Date.now() + 1, sender: 'ai', text: replyText });
-      setAiTyping(false);
-    }, 1200);
+      const res = await chatService.sendMessage(convId, userText);
+      dispatch(addChatMessage({ id: res.data.id, sender: res.data.sender.toLowerCase() === 'ai' ? 'ai' : 'student', text: res.data.text }));
+    } catch {
+      dispatch(addChatMessage({ id: Date.now() + 1, sender: 'ai', text: 'I apologize, but I encountered an error processing your request. Please try again.' }));
+    } finally {
+      dispatch(setAiTyping(false));
+    }
   };
 
   return (
@@ -39,10 +65,10 @@ export default function Courses() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/40 dark:bg-slate-900/20 p-5 rounded-2xl border border-slate-200/60 dark:border-white/5">
         <div>
           <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Course Workspace</span>
-          <h1 className="text-2xl font-heading font-black text-slate-900 dark:text-white mt-0.5">{selectedCourse.title}</h1>
+          <h1 className="text-2xl font-heading font-black text-slate-900 dark:text-white mt-0.5">{courseDetail?.title || selectedCourse.title}</h1>
           <div className="flex gap-2.5 mt-2">
-            <span className="badge badge-primary">{selectedCourse.category}</span>
-            <span className="badge badge-secondary">{selectedCourse.difficulty}</span>
+            <span className="badge badge-primary">{courseDetail?.category || selectedCourse.category}</span>
+            <span className="badge badge-secondary">{courseDetail?.difficulty || selectedCourse.difficulty}</span>
           </div>
         </div>
 
@@ -60,11 +86,11 @@ export default function Courses() {
                 className="text-[#4F46E5]" 
                 strokeWidth="3.5" 
                 strokeDasharray="100" 
-                strokeDashoffset={100 - selectedCourse.progress} 
+                strokeDashoffset={100 - (courseDetail?.progress ?? selectedCourse.progress)} 
               />
             </svg>
             <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold">
-              {selectedCourse.progress}%
+              {courseDetail?.progress ?? selectedCourse.progress}%
             </span>
           </div>
           <span className="text-xs font-bold text-slate-800 dark:text-slate-100">Progress</span>
@@ -81,19 +107,22 @@ export default function Courses() {
           </h3>
           
           <div className="space-y-4">
-            {selectedCourse.modules.map(mod => (
+            {(courseDetail?.modules ?? []).map((mod: ModuleDto) => (
               <div key={mod.id} className="space-y-2">
                 <div className="flex justify-between items-center">
                   <h4 className="text-[11px] font-extrabold text-slate-800 dark:text-slate-250 truncate">{mod.title}</h4>
                   {mod.completed && <CheckCircle2 size={12} className="text-emerald-500 flex-shrink-0" />}
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  {mod.lessons.map((les: Lesson) => {
-                    const isActive = activeLesson.id === les.id;
+                  {mod.lessons.map((les: LessonDto) => {
+                    const isActive = activeLesson.id === String(les.id);
                     return (
                       <button 
                         key={les.id} 
-                        onClick={() => setActiveLesson(les)}
+                        onClick={() => {
+                          dispatch(setActiveLesson({ id: String(les.id), title: les.title, duration: les.duration, type: les.type }));
+                          courseService.completeLesson(Number(selectedCourse.id), les.id).catch(console.error);
+                        }}
                         className={`flex items-center gap-2.5 px-3 py-2 text-[11px] font-bold rounded-lg text-left transition-all border cursor-pointer ${
                           isActive 
                             ? 'bg-indigo-500/10 border-indigo-500 text-[#4F46E5] dark:text-indigo-400' 

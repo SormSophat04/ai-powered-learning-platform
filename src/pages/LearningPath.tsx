@@ -1,10 +1,35 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Check, ChevronRight } from 'lucide-react';
-import { learningPath } from '../mockData';
+import { learningPathService } from '../services';
+import type { LearningPathData } from '../services';
 
 export default function LearningPath() {
   const navigate = useNavigate();
+  const [data, setData] = useState<LearningPathData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      learningPathService.getLearningPath(),
+      learningPathService.getRecommendation(),
+    ]).then(([pathRes, recRes]) => {
+      setData({
+        milestones: pathRes.data.milestones,
+        recommendation: recRes.data,
+      });
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const milestones = data?.milestones || [];
 
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
@@ -25,7 +50,7 @@ export default function LearningPath() {
           <div className="timeline-container">
             <div className="timeline-line"></div>
             
-            {learningPath.map((path, idx) => (
+            {milestones.map((path, idx) => (
               <div key={path.id} className="timeline-item">
                 
                 {/* Timeline node icon */}
@@ -71,9 +96,9 @@ export default function LearningPath() {
             <Sparkles size={14} className="text-[#4F46E5]" /> AI Recommendation
           </h3>
           <div className="bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/40 dark:border-slate-850/40">
-            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-1.5">Next milestone priority: Collections</h4>
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-1.5">Next milestone priority: {data?.recommendation.title || 'N/A'}</h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              Your average score in past Collections checks is 45%. The engine prioritizes solidifying generic types and mapping structures before unlocking advanced Spring RESTful framework features.
+              {data?.recommendation.description || 'No recommendation available.'}
             </p>
           </div>
           <button 

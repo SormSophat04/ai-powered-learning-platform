@@ -1,13 +1,16 @@
 import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { 
   BookOpen, Award, Cpu, FileText, Settings, User, Users, LogOut, 
   Activity, TrendingUp, Brain, GraduationCap, ShieldAlert 
 } from 'lucide-react';
-import { useStore } from '../store/useStore';
+import { useAppSelector, useAppDispatch } from '../store/hooks';
+import { setRole } from '../store/authSlice';
 
 export default function Sidebar() {
-  const { role } = useStore();
+  const role = useAppSelector((s) => s.auth.role);
+  const dispatch = useAppDispatch();
+  const navigate = useNavigate();
 
   const getMenuClasses = ({ isActive }: { isActive: boolean }) => {
     return `flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-lg transition-all border-l-2 cursor-pointer ${
@@ -125,10 +128,10 @@ export default function Sidebar() {
         )}
 
         <li className="mt-auto">
-          <Link to="/" className="flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 transition-all">
+          <button onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); dispatch(setRole('student')); navigate('/'); }} className="flex items-center gap-3.5 px-4 py-3 text-xs font-semibold rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 hover:text-rose-600 transition-all w-full cursor-pointer">
             <LogOut size={16} />
             <span>Logout</span>
-          </Link>
+          </button>
         </li>
       </ul>
 

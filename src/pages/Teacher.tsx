@@ -1,11 +1,28 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, BookOpen, FileText, Award, Sparkles } from 'lucide-react';
 import { StatCard } from '../components/Cards';
-import { teacherDashboardData } from '../mockData';
+import { teacherService } from '../services';
+import type { TeacherDashboardData } from '../services';
 
 export default function Teacher() {
   const navigate = useNavigate();
+  const [data, setData] = useState<TeacherDashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    teacherService.getDashboard().then(res => {
+      setData(res.data);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
@@ -14,26 +31,26 @@ export default function Teacher() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Students Enrolled" 
-          value={teacherDashboardData.widgets.totalStudents} 
+          value={data?.widgets.totalStudents ?? 0} 
           icon={<Users size={20} />} 
         />
         <StatCard 
           title="Total Active Courses" 
-          value={teacherDashboardData.widgets.totalCourses} 
+          value={data?.widgets.totalCourses ?? 0} 
           icon={<BookOpen size={20} />} 
           iconBgColor="bg-cyan-500/10" 
           iconColor="text-cyan-500" 
         />
         <StatCard 
           title="Assignments Pending Review" 
-          value={teacherDashboardData.widgets.assignmentsPendingReview} 
+          value={data?.widgets.assignmentsPendingReview ?? 0} 
           icon={<FileText size={20} />} 
           iconBgColor="bg-amber-500/10" 
           iconColor="text-amber-500" 
         />
         <StatCard 
           title="Average Class Grade" 
-          value={teacherDashboardData.widgets.averageGrade} 
+          value={data?.widgets.averageGrade ?? 'N/A'} 
           icon={<Award size={20} />} 
           iconBgColor="bg-emerald-500/10" 
           iconColor="text-emerald-500" 
@@ -59,7 +76,7 @@ export default function Teacher() {
                 </tr>
               </thead>
               <tbody>
-                {teacherDashboardData.students.map(std => (
+                {(data?.students || []).map(std => (
                   <tr key={std.id}>
                     <td className="font-bold">{std.name}</td>
                     <td>{std.email}</td>
@@ -79,7 +96,7 @@ export default function Teacher() {
             <Sparkles size={14} className="text-[#4F46E5]" /> AI Instructor Insights
           </h3>
           <div className="space-y-3">
-            {teacherDashboardData.aiInsights.map(ins => (
+            {(data?.aiInsights || []).map(ins => (
               <div 
                 key={ins.id}
                 className={`p-3.5 rounded-xl bg-white dark:bg-slate-900/60 border-l-4 text-xs ${
@@ -115,7 +132,7 @@ export default function Teacher() {
               </tr>
             </thead>
             <tbody>
-              {teacherDashboardData.submissionQueue.map(item => (
+              {(data?.submissionQueue || []).map(item => (
                 <tr key={item.id}>
                   <td className="font-bold">{item.studentName}</td>
                   <td>{item.assignmentTitle}</td>
