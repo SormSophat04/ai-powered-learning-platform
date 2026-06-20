@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://edumind.api.sophathz.online/',
+        target: 'http://localhost:8085',
         changeOrigin: true,
       },
     },

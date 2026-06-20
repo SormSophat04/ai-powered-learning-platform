@@ -7,6 +7,7 @@ import {
   incrementTimer, resetQuiz, finishQuiz,
 } from '../store/quizSlice';
 import { quizService } from '../services';
+import Skeleton from '../components/Skeleton';
 
 export default function Quiz() {
   const quizTopic = useAppSelector((s) => s.quiz.quizTopic);
@@ -54,6 +55,39 @@ export default function Quiz() {
       setGenerating(false);
     }
   };
+
+  if (generating) {
+    return (
+      <div className="max-w-[760px] mx-auto text-left font-sans">
+        <div className="glass-panel p-6 md:p-8 border border-slate-200/60 dark:border-slate-800/40 space-y-6">
+          <div className="flex justify-between items-center pb-4 border-b border-slate-200 dark:border-slate-800/60 mb-2">
+            <div className="space-y-1.5">
+              <Skeleton height={16} width={160} />
+              <Skeleton height={10} width={100} />
+            </div>
+            <div className="flex items-center gap-3">
+              <Skeleton width={60} height={24} borderRadius="6px" />
+              <Skeleton width={70} height={24} borderRadius="999px" />
+            </div>
+          </div>
+          <Skeleton height={6} borderRadius="999px" />
+          <Skeleton height={18} width="90%" />
+          <div className="space-y-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="flex items-center gap-3.5 p-4 rounded-xl border border-slate-200 dark:border-slate-800/80">
+                <Skeleton width={24} height={24} borderRadius="999px" />
+                <Skeleton height={12} width="70%" />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between pt-5 border-t border-slate-200 dark:border-slate-800/60">
+            <Skeleton width={80} height={36} borderRadius="8px" />
+            <Skeleton width={100} height={36} borderRadius="8px" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[760px] mx-auto text-left font-sans">

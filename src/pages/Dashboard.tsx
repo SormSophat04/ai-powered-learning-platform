@@ -7,6 +7,7 @@ import { StatCard, ActivityCard } from '../components/Cards';
 import { PerformanceChart, StudyHoursBar } from '../components/Charts';
 import { dashboardService, courseService } from '../services';
 import type { DashboardStats, ActivityEntry, CourseSummary } from '../services';
+import Skeleton, { SkeletonStatCard, SkeletonChart, SkeletonCourseCard, SkeletonActivityItem } from '../components/Skeleton';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -30,8 +31,31 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <SkeletonChart />
+          <SkeletonChart />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="glass-panel p-6 border border-slate-200/60 dark:border-slate-800/40 space-y-4">
+            <Skeleton height={14} width={140} />
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => <SkeletonCourseCard key={i} />)}
+            </div>
+          </div>
+          <div className="glass-panel p-6 border border-slate-200/60 dark:border-slate-800/40 space-y-4">
+            <Skeleton height={14} width={160} />
+            <div className="space-y-4">
+              {[1, 2, 3].map(i => <SkeletonActivityItem key={i} />)}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
