@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Sparkles, Check, ChevronRight } from 'lucide-react';
 import { learningPathService } from '../services';
 import type { LearningPathData } from '../services';
+import { SkeletonMilestone } from '../components/Skeleton';
+import Skeleton from '../components/Skeleton';
 
 export default function LearningPath() {
   const navigate = useNavigate();
@@ -23,8 +25,28 @@ export default function LearningPath() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <div className="space-y-1">
+          <Skeleton height={11} width={200} />
+          <Skeleton height={24} width={420} />
+          <Skeleton height={12} width="60%" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+          <div className="glass-panel p-6 md:p-8 border border-slate-200/60 dark:border-slate-800/40">
+            <div className="timeline-container space-y-6">
+              {[1, 2, 3, 4, 5].map(i => <SkeletonMilestone key={i} />)}
+            </div>
+          </div>
+          <div className="glass-panel p-6 border border-slate-200/60 dark:border-slate-800/40 space-y-4 h-fit">
+            <Skeleton height={14} width={140} />
+            <div className="p-4 rounded-xl border border-slate-200/40 space-y-2">
+              <Skeleton height={12} width="80%" />
+              <Skeleton height={11} width="100%" />
+              <Skeleton height={11} width="90%" />
+            </div>
+            <Skeleton height={36} borderRadius="8px" />
+          </div>
+        </div>
       </div>
     );
   }

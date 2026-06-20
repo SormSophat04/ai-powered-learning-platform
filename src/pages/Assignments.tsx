@@ -1,8 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Upload, FileCheck, Sparkles, Check, FileText } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { setAssignments, setActiveAssignmentId, setUploadedFile, setUploadProgress, setAiFeedback, submitAssignment } from '../store/assignmentsSlice';
 import { assignmentService } from '../services';
+import { SkeletonAssignmentCard } from '../components/Skeleton';
+import Skeleton from '../components/Skeleton';
+
+function formatStatus(status: string): string {
+  return status ? status.charAt(0).toUpperCase() + status.slice(1).toLowerCase() : 'Pending';
+}
 
 export default function Assignments() {
   const assignments = useAppSelector((s) => s.assignments.assignments);
@@ -11,20 +17,31 @@ export default function Assignments() {
   const uploadProgress = useAppSelector((s) => s.assignments.uploadProgress);
   const aiFeedback = useAppSelector((s) => s.assignments.aiFeedback);
   const dispatch = useAppDispatch();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     assignmentService.getAssignments().then(res => {
-      dispatch(setAssignments(res.data.map(a => ({
+      const mapped = res.data.map(a => ({
         id: String(a.id),
         title: a.title,
         course: a.courseName,
         dueDate: a.dueDate,
-        status: a.status,
+        status: formatStatus(a.status),
         score: a.score,
         feedback: a.feedback,
         file: a.fileUrl,
-      }))));
-    }).catch(console.error);
+      }));
+      dispatch(setAssignments(mapped));
+      if (mapped.length > 0 && !activeAssignmentId) {
+        dispatch(setActiveAssignmentId(mapped[0].id));
+      }
+    }).catch(err => {
+      console.error(err);
+      setError('Failed to load assignments. Make sure you are logged in as a student.');
+    }).finally(() => setLoading(false));
   }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -49,10 +66,45 @@ export default function Assignments() {
 
   const activeAsg = assignments.find(a => a.id === activeAssignmentId) || assignments[0];
 
+  if (loading) {
+    return (
+      <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
+        <Skeleton height={24} width={280} />
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1.9fr] gap-6">
+          <div className="space-y-3.5">
+            {[1, 2, 3].map(i => <SkeletonAssignmentCard key={i} />)}
+          </div>
+          <div className="glass-panel p-6 md:p-8 border border-slate-200/60 dark:border-slate-800/40 space-y-6">
+            <div className="flex justify-between items-center pb-3.5 border-b border-slate-200 dark:border-slate-800/60 mb-2">
+              <div className="space-y-1">
+                <Skeleton height={16} width={180} />
+                <Skeleton height={10} width={100} />
+              </div>
+            </div>
+            <div className="border-2 border-dashed border-slate-200 dark:border-slate-800/80 p-8 rounded-2xl flex flex-col items-center gap-3">
+              <Skeleton width={48} height={48} borderRadius="999px" />
+              <Skeleton height={12} width={200} />
+              <Skeleton height={10} width={260} />
+              <Skeleton height={32} width={100} borderRadius="8px" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64 text-red-400 text-xs">
+        {error}
+      </div>
+    );
+  }
+
   if (!activeAsg) {
     return (
       <div className="flex items-center justify-center h-64 text-slate-400 text-xs">
-        Loading assignments...
+        No assignments found for your account.
       </div>
     );
   }
@@ -88,7 +140,7 @@ export default function Assignments() {
                     asg.status === 'Graded' ? 'badge-success' :
                     asg.status === 'Submitted' ? 'badge-primary' : 'badge-warning'
                   } text-[8px] px-1.5 py-0.5`}>
-                    {asg.status}
+                    {formatStatus(asg.status)}
                   </span>
                 </div>
 

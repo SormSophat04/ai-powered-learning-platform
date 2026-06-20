@@ -4,6 +4,7 @@ import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { addChatMessage, setChatHistory, setChatConversations, setActiveChatId, setAiTyping } from '../store/chatSlice';
 import { ChatMessageBubble, ChatInputConsole, QuickActionsBar } from '../components/AIChat';
 import { chatService } from '../services';
+import Skeleton from '../components/Skeleton';
 
 export default function AIChat() {
   const chatHistory = useAppSelector((s) => s.chat.chatHistory);
@@ -62,13 +63,48 @@ export default function AIChat() {
     }
   };
 
+  if (loadingConvos) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] lg:grid-cols-[240px_1fr] gap-6 min-h-[300px] md:h-[calc(100vh-180px)] max-w-7xl mx-auto font-sans">
+        <div className="hidden md:flex flex-col gap-4 border-r border-slate-200/80 dark:border-slate-800/40 pr-4 text-left">
+          <Skeleton height={40} borderRadius="8px" />
+          <div className="mt-4 space-y-3">
+            <Skeleton height={11} width={80} />
+            <div className="flex flex-col gap-1.5">
+              {[1, 2, 3, 4, 5].map(i => (
+                <Skeleton key={i} height={36} borderRadius="8px" />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="glass-panel p-5 border border-slate-200/60 dark:border-slate-800/40 flex flex-col h-full bg-white/40 dark:bg-[#0F172A]/40 min-w-0">
+          <div className="flex-1 space-y-4 p-2">
+            {[1, 2, 3].map(i => (
+              <div key={i} className={`flex gap-3 max-w-[80%] ${i % 2 === 0 ? 'self-end flex-row-reverse' : 'self-start'}`}>
+                <Skeleton width={32} height={32} borderRadius="999px" />
+                <div className="space-y-2">
+                  <Skeleton height={32} width={i % 2 === 0 ? 160 : 200} borderRadius="16px" />
+                  <Skeleton height={16} width={i % 2 === 0 ? 200 : 240} borderRadius="16px" />
+                </div>
+              </div>
+            ))}
+          </div>
+          <Skeleton height={40} borderRadius="12px" className="mt-4" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] lg:grid-cols-[240px_1fr] gap-6 min-h-[300px] md:h-[calc(100vh-180px)] max-w-7xl mx-auto font-sans">
 
       {/* Sidebar - Chat History */}
       <div className="hidden md:flex flex-col gap-4 border-r border-slate-200/80 dark:border-slate-800/40 pr-4 text-left">
         <button
-          onClick={() => handleSendChatMessage("Initialize a new study session.")}
+          onClick={() => {
+            dispatch(setActiveChatId(0));
+            dispatch(setChatHistory([]));
+          }}
           className="w-full h-[40px] text-xs font-bold bg-[#4F46E5] hover:bg-indigo-750 text-white rounded-lg flex items-center justify-center gap-1.5 shadow-md shadow-indigo-500/10 cursor-pointer"
         >
           <Plus size={14} /> New Session

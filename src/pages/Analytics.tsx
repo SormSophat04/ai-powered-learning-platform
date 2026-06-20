@@ -3,6 +3,8 @@ import { Brain } from 'lucide-react';
 import { PerformanceChart, SubjectStrengthRadar, StudyHoursBar } from '../components/Charts';
 import { analyticsService } from '../services';
 import type { AnalyticsData } from '../services';
+import { SkeletonChart } from '../components/Skeleton';
+import Skeleton from '../components/Skeleton';
 
 export default function Analytics() {
   const [data, setData] = useState<AnalyticsData | null>(null);
@@ -26,8 +28,36 @@ export default function Analytics() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <Skeleton height={24} width={320} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <SkeletonChart />
+          <SkeletonChart />
+          <SkeletonChart />
+        </div>
+        <div className="glass-panel p-6 md:p-8 border border-slate-200/60 dark:border-slate-800/40">
+          <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-800/60 mb-5">
+            <Skeleton height={16} width={220} />
+            <Skeleton height={20} width={120} borderRadius="999px" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-8 items-center">
+            <div className="flex flex-col items-center space-y-3">
+              <Skeleton width={120} height={120} borderRadius="999px" />
+              <Skeleton height={12} width={140} />
+            </div>
+            <div className="space-y-4">
+              <Skeleton height={14} width={180} />
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="flex gap-2.5 items-start">
+                    <Skeleton width={6} height={6} borderRadius="999px" className="mt-1.5" />
+                    <Skeleton height={12} width="80%" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

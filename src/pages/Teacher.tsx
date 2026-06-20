@@ -4,6 +4,8 @@ import { Users, BookOpen, FileText, Award, Sparkles } from 'lucide-react';
 import { StatCard } from '../components/Cards';
 import { teacherService } from '../services';
 import type { TeacherDashboardData } from '../services';
+import { SkeletonStatCard, SkeletonTableRow } from '../components/Skeleton';
+import Skeleton from '../components/Skeleton';
 
 export default function Teacher() {
   const navigate = useNavigate();
@@ -18,8 +20,62 @@ export default function Teacher() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      <div className="space-y-6 max-w-7xl mx-auto font-sans">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+          <SkeletonStatCard />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6">
+          <div className="glass-panel p-6 border border-slate-200/60 dark:border-slate-800/40 space-y-4">
+            <Skeleton height={14} width={140} />
+            <table className="data-table">
+              <thead>
+                <tr>
+                  {['Name', 'Email', 'Course', 'Grade', 'Last Active'].map(h => (
+                    <th key={h}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4, 5].map(i => <SkeletonTableRow key={i} />)}
+              </tbody>
+            </table>
+          </div>
+          <div className="glass-panel p-6 border border-slate-200/60 dark:border-slate-800/40 space-y-4 h-fit">
+            <Skeleton height={14} width={140} />
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="p-3.5 rounded-xl border border-slate-200/40 space-y-2">
+                  <Skeleton height={8} width={80} />
+                  <Skeleton height={11} width="90%" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div className="glass-panel p-6 border border-slate-200/60 dark:border-slate-800/40 space-y-4">
+          <Skeleton height={14} width={220} />
+          <table className="data-table">
+            <thead>
+              <tr>
+                {['Student', 'Assignment', 'Course', 'Received Date', 'Action'].map(h => (
+                  <th key={h}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[1, 2, 3].map(i => (
+                <tr key={i}>
+                  {[1, 2, 3, 4, 5].map(j => (
+                    <td key={j} className="py-3"><Skeleton height={12} width={j === 4 ? 90 : j === 1 ? 100 : 120} /></td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     );
   }
