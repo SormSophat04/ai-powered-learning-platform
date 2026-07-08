@@ -4,6 +4,8 @@ export interface QuestionDto {
   id: number;
   question: string;
   options: string[];
+  answer: number;
+  explanation?: string;
 }
 
 export interface QuizData {
@@ -34,8 +36,8 @@ export interface QuizResult {
 
 export const quizService = {
   generate: (topic: string, difficulty: string, count: number) =>
-    api.post<{ success: boolean; message: string; data: QuizData }>('/api/quiz/generate', { topic, difficulty, count }).then(r => r.data),
+    api.post<QuizData>('/api/quiz/generate', { topic, difficulty, count }).then(r => r.data),
 
   submit: (attemptId: number, answersJson: string) =>
-    api.post<{ success: boolean; message: string; data: QuizResult }>(`/api/quiz/${attemptId}/submit`, { attemptId, answersJson }).then(r => r.data),
+    api.post<QuizResult>(`/api/quiz/${attemptId}/submit`, { answersJson }).then(r => r.data),
 };

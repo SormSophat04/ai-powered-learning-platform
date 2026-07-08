@@ -1,1 +1,11 @@
-export {};
+export { useLogin, useRegister } from './useAuth';
+export { useDashboardStats, useRecentActivity } from './useDashboard';
+export { useCourses, useCourseDetail, useEnrollCourse, useCreateCourse, useCompleteLesson, useUpdateProgress } from './useCourses';
+export { useConversations, useConversationMessages, useCreateConversation, useSendMessage } from './useChat';
+export { useGenerateQuiz, useSubmitQuiz } from './useQuiz';
+export { useAssignments, useSubmitAssignment } from './useAssignments';
+export { usePerformance, useSubjectStrengths, useStudyHours, useGradePrediction } from './useAnalytics';
+export { useLearningPath, useRecommendation } from './useLearningPath';
+export { useTeacherDashboard } from './useTeacher';
+export { useFeatures } from './useFeatures';
+export { useAdminStats } from './useAdmin';

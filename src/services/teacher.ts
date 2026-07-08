@@ -33,5 +33,5 @@ export interface TeacherDashboardData {
 
 export const teacherService = {
   getDashboard: () =>
-    api.get<{ success: boolean; message: string; data: TeacherDashboardData }>('/api/teacher/dashboard').then(r => r.data),
+    api.get<TeacherDashboardData>('/api/teacher/dashboard').then(r => r.data),
 };

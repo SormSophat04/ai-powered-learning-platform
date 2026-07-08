@@ -1,15 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Brain, Clock, Sparkles, Check, X } from 'lucide-react';
+import { Brain, Clock, Sparkles, Check, X, Award } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import {
   setQuizTopic, setQuizDifficulty, setQuizCount, startQuiz,
   selectQuizAnswer, nextQuizQuestion, prevQuizQuestion,
   incrementTimer, resetQuiz, finishQuiz,
 } from '../store/quizSlice';
-import { quizService } from '../services';
+import { useGenerateQuiz, useSubmitQuiz } from '../hooks/useQuiz';
+import type { QuizResult } from '../services';
 import Skeleton from '../components/Skeleton';
 
 export default function Quiz() {
+  const role = useAppSelector((s) => s.auth.role);
   const quizTopic = useAppSelector((s) => s.quiz.quizTopic);
   const quizDifficulty = useAppSelector((s) => s.quiz.quizDifficulty);
   const quizCount = useAppSelector((s) => s.quiz.quizCount);
@@ -22,20 +24,21 @@ export default function Quiz() {
   const quizScore = useAppSelector((s) => s.quiz.quizScore);
   const quizCompleted = useAppSelector((s) => s.quiz.quizCompleted);
   const dispatch = useAppDispatch();
-  const [generating, setGenerating] = useState(false);
-  const [quizResult, setQuizResult] = useState<any>(null);
+  const [quizResult, setQuizResult] = useState<QuizResult | null>(null);
+  const generateMutation = useGenerateQuiz();
+  const submitMutation = useSubmitQuiz();
 
-  const timerRef = useRef<any>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (quizRunning && !quizCompleted) {
       timerRef.current = setInterval(() => {
         dispatch(incrementTimer());
       }, 1000);
-    } else {
+    } else if (timerRef.current !== null) {
       clearInterval(timerRef.current);
     }
-    return () => clearInterval(timerRef.current);
+    return () => { if (timerRef.current !== null) clearInterval(timerRef.current); };
   }, [quizRunning, quizCompleted]);
 
   const formatTime = (seconds: number) => {
@@ -45,18 +48,15 @@ export default function Quiz() {
   };
 
   const handleStartQuiz = async () => {
-    setGenerating(true);
     try {
-      const res = await quizService.generate(quizTopic, quizDifficulty, quizCount);
-      dispatch(startQuiz(res.data));
+      const res = await generateMutation.mutateAsync({ topic: quizTopic, difficulty: quizDifficulty, count: quizCount });
+      dispatch(startQuiz(res));
     } catch (err) {
       console.error('Failed to generate quiz:', err);
-    } finally {
-      setGenerating(false);
     }
   };
 
-  if (generating) {
+  if (generateMutation.isPending) {
     return (
       <div className="max-w-[760px] mx-auto text-left font-sans">
         <div className="glass-panel p-6 md:p-8 border border-slate-200/60 dark:border-slate-800/40 space-y-6">
@@ -89,13 +89,29 @@ export default function Quiz() {
     );
   }
 
+  if (role !== 'student') {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="w-14 h-14 rounded-full bg-indigo-500/10 flex items-center justify-center">
+          <Award size={24} className="text-[#7C3AED]" />
+        </div>
+        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+          {role === 'teacher' ? 'Teacher View' : 'Admin View'}
+        </p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[320px] text-center leading-relaxed">
+          AI Practice Quiz is a student-only feature. Switch to a student account to generate and take quizzes.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[760px] mx-auto text-left font-sans">
       {!quizRunning ? (
         // Quiz Configuration Forms
         <div className="glass-panel p-8 border border-slate-200/60 dark:border-slate-800/40">
           <h2 className="text-xl font-heading font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2">
-            <Brain size={22} className="text-[#4F46E5]" /> AI Practice Quiz Generator
+            <Brain size={22} className="text-[#7C3AED]" /> AI Practice Quiz Generator
           </h2>
 
           <div className="space-y-4">
@@ -123,7 +139,7 @@ export default function Quiz() {
                       onClick={() => dispatch(setQuizDifficulty(diff))}
                       className={`flex-grow py-2 text-xs font-bold rounded-lg border transition-all cursor-pointer ${
                         quizDifficulty === diff 
-                          ? 'bg-[#4F46E5] text-white border-[#4F46E5]' 
+                          ? 'bg-[#7C3AED] text-white border-[#7C3AED]' 
                           : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-500 hover:bg-slate-50'
                       }`}
                     >
@@ -149,14 +165,14 @@ export default function Quiz() {
 
             <button 
               onClick={handleStartQuiz}
-              disabled={generating}
-              className="w-full py-3 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-indigo-500/15 flex items-center justify-center gap-1.5 cursor-pointer mt-6"
+              disabled={generateMutation.isPending}
+              className="w-full py-3 rounded-lg bg-[#7C3AED] hover:bg-violet-950 disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-indigo-500/15 flex items-center justify-center gap-1.5 cursor-pointer mt-6"
             >
-              {generating ? 'Generating...' : 'Generate AI Quiz'} <Sparkles size={14} />
+              {generateMutation.isPending ? 'Generating...' : 'Generate AI Quiz'} <Sparkles size={14} />
             </button>
           </div>
         </div>
-      ) : (
+      ) : currentQuiz ? (
         // Quiz Execution Page
         <div className="glass-panel p-6 md:p-8 border border-slate-200/60 dark:border-slate-800/40">
           
@@ -179,7 +195,7 @@ export default function Quiz() {
           {/* Progress bar */}
           <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full mb-6 overflow-hidden">
             <div 
-              className="h-full bg-gradient-to-r from-[#4F46E5] to-cyan-400 transition-all duration-300"
+              className="h-full bg-gradient-to-r from-[#7C3AED] to-cyan-400 transition-all duration-300"
               style={{ width: `${((quizCurrentIndex + 1) / currentQuiz.questions.length) * 100}%` }}
             ></div>
           </div>
@@ -200,13 +216,13 @@ export default function Quiz() {
                       onClick={() => dispatch(selectQuizAnswer(idx))}
                       className={`flex items-center gap-3.5 p-4 rounded-xl border transition-all cursor-pointer ${
                         isSelected 
-                          ? 'border-[#4F46E5] bg-[#4F46E5]/10 text-[#4F46E5] dark:text-indigo-400 font-bold' 
-                          : 'border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-800/40 hover:border-[#4F46E5]/40'
+                          ? 'border-[#7C3AED] bg-[#7C3AED]/10 text-[#7C3AED] dark:text-indigo-400 font-bold' 
+                          : 'border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/40 text-slate-700 dark:text-slate-250 hover:bg-slate-100 dark:hover:bg-slate-800/40 hover:border-[#7C3AED]/40'
                       }`}
                     >
                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${
                         isSelected 
-                          ? 'border-[#4F46E5] bg-[#4F46E5] text-white' 
+                          ? 'border-[#7C3AED] bg-[#7C3AED] text-white' 
                           : 'border-slate-400 text-slate-500'
                       }`}>
                         {String.fromCharCode(65 + idx)}
@@ -227,20 +243,23 @@ export default function Quiz() {
                   Previous
                 </button>
                 <button 
-                    onClick={() => {
+                    onClick={async () => {
                     if (quizCurrentIndex + 1 === currentQuiz.questions.length) {
                       const newRecord = [...quizAnswersRecord];
                       newRecord[quizCurrentIndex] = quizSelectedAnswer;
-                      quizService.submit(currentQuiz.attemptId, JSON.stringify(newRecord)).then(res => {
-                        dispatch(finishQuiz({ score: res.data.score, answersRecord: newRecord, result: res.data }));
-                        setQuizResult(res.data);
-                      }).catch(console.error);
+                      try {
+                        const res = await submitMutation.mutateAsync({ attemptId: currentQuiz.attemptId, answersJson: JSON.stringify(newRecord) });
+                        dispatch(finishQuiz({ score: res.score, answersRecord: newRecord, result: res }));
+                        setQuizResult(res);
+                      } catch (err) {
+                        console.error('Failed to submit quiz:', err);
+                      }
                     } else {
                       dispatch(nextQuizQuestion());
                     }
                   }}
                   disabled={quizSelectedAnswer === null}
-                  className="px-4 py-2.5 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="px-4 py-2.5 rounded-lg bg-[#7C3AED] hover:bg-violet-950 text-white text-xs font-bold shadow-md shadow-indigo-500/10 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   {quizCurrentIndex + 1 === currentQuiz.questions.length ? 'Submit Quiz' : 'Next Question'}
                 </button>
@@ -270,15 +289,15 @@ export default function Quiz() {
               </div>
 
               <div className="space-y-4 text-left max-h-[320px] overflow-y-auto pr-1 mb-8">
-                {(quizResult?.results ?? currentQuiz.questions.map((q: any, idx: number) => ({
+                {((quizResult?.results as import('../services').QuestionResult[]) ?? currentQuiz.questions.map((q, idx: number) => ({
                   questionId: q.id,
                   question: q.question,
                   options: q.options,
                   correctAnswer: q.answer,
-                  yourAnswer: quizAnswersRecord[idx],
+                  yourAnswer: quizAnswersRecord[idx] as number,
                   correct: quizAnswersRecord[idx] === q.answer,
                   explanation: q.explanation || ''
-                }))).map((r: any, idx: number) => {
+                }))).map((r, idx: number) => {
                   const correct = r.correct;
                   const opts = r.options || [];
                   return (
@@ -302,7 +321,7 @@ export default function Quiz() {
                           Correct Choice: <strong className="text-emerald-500">{opts[r.correctAnswer]}</strong>
                         </p>
                       )}
-                      <p className="text-slate-500 dark:text-slate-400 italic pl-3 border-l-2 border-[#4F46E5] mt-2.5 leading-normal">
+                      <p className="text-slate-500 dark:text-slate-400 italic pl-3 border-l-2 border-[#7C3AED] mt-2.5 leading-normal">
                         <strong>AI Explanation:</strong> {r.explanation}
                       </p>
                     </div>
@@ -312,7 +331,7 @@ export default function Quiz() {
 
               <button 
                 onClick={() => dispatch(resetQuiz())}
-                className="px-6 py-2.5 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/10 cursor-pointer"
+                className="px-6 py-2.5 rounded-lg bg-[#7C3AED] hover:bg-violet-950 text-white text-xs font-bold shadow-md shadow-indigo-500/10 cursor-pointer"
               >
                 Close & Return
               </button>
@@ -320,7 +339,7 @@ export default function Quiz() {
           )}
 
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -4,13 +4,17 @@ import {
   Tooltip, Legend, BarChart, Bar, RadarChart, PolarGrid, 
   PolarAngleAxis, PolarRadiusAxis, Radar 
 } from 'recharts';
+import type { PerformanceEntry, SubjectStrength, StudyHourEntry } from '../services/analytics';
+import type { AiUsageEntry } from '../services/admin';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 p-2.5 rounded-lg shadow-lg backdrop-blur-md">
         <p className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-1">{label}</p>
-        {payload.map((item: any, idx: number) => (
+        {// eslint-disable-next-line @typescript-eslint/no-explicit-any
+        payload.map((item: any, idx: number) => (
           <p key={idx} className="text-[11px] font-semibold" style={{ color: item.color }}>
             {item.name}: {item.value}
           </p>
@@ -20,11 +24,6 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   }
   return null;
 };
-
-interface PerformanceEntry { week: string; score: number; avg: number }
-interface SubjectStrength { subject: string; score: number; limit: number }
-interface StudyHourEntry { day: string; hours: number }
-interface AiUsageEntry { time: string; requests: number }
 
 export function PerformanceChart({ data }: { data?: PerformanceEntry[] }) {
   const chartData = data || [];
@@ -42,16 +41,16 @@ export function PerformanceChart({ data }: { data?: PerformanceEntry[] }) {
             type="monotone" 
             dataKey="score" 
             name="Your Score" 
-            stroke="#4F46E5" 
+            stroke="#7C3AED" 
             strokeWidth={3} 
             activeDot={{ r: 6 }} 
-            dot={{ stroke: '#4F46E5', strokeWidth: 2, r: 3 }}
+            dot={{ stroke: '#7C3AED', strokeWidth: 2, r: 3 }}
           />
           <Line 
             type="monotone" 
             dataKey="avg" 
             name="Class Avg" 
-            stroke="#06B6D4" 
+            stroke="#D97706" 
             strokeWidth={2} 
             strokeDasharray="4 4"
             dot={false}
@@ -74,8 +73,8 @@ export function SubjectStrengthRadar({ data }: { data?: SubjectStrength[] }) {
           <Radar 
             name="Strength" 
             dataKey="score" 
-            stroke="#4F46E5" 
-            fill="#4F46E5" 
+            stroke="#7C3AED" 
+            fill="#7C3AED" 
             fillOpacity={0.25} 
           />
         </RadarChart>
@@ -95,7 +94,7 @@ export function StudyHoursBar({ data }: { data?: StudyHourEntry[] }) {
           <XAxis dataKey="day" stroke="#94a3b8" fontSize={10} tickLine={false} />
           <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} />
           <Tooltip content={<CustomTooltip />} />
-          <Bar dataKey="hours" name="Study Hours" fill="#4F46E5" radius={[4, 4, 0, 0]} maxBarSize={32} />
+          <Bar dataKey="hours" name="Study Hours" fill="#7C3AED" radius={[4, 4, 0, 0]} maxBarSize={32} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -116,10 +115,10 @@ export function AdminApiRequests({ data }: { data?: AiUsageEntry[] }) {
             type="monotone" 
             dataKey="requests" 
             name="Requests" 
-            stroke="#06B6D4" 
+            stroke="#D97706" 
             strokeWidth={3} 
             activeDot={{ r: 5 }} 
-            dot={{ stroke: '#06B6D4', strokeWidth: 1, r: 2 }}
+            dot={{ stroke: '#D97706', strokeWidth: 1, r: 2 }}
           />
         </LineChart>
       </ResponsiveContainer>

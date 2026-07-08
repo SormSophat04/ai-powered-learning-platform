@@ -44,13 +44,19 @@ export interface CourseSummary {
 
 export const courseService = {
   getCourses: () =>
-    api.get<{ success: boolean; message: string; data: CourseSummary[] }>('/api/courses').then(r => r.data),
+    api.get<CourseSummary[]>('/api/courses').then(r => r.data),
 
   getCourseDetail: (id: number) =>
-    api.get<{ success: boolean; message: string; data: CourseDetail }>(`/api/courses/${id}`).then(r => r.data),
+    api.get<CourseDetail>(`/api/courses/${id}`).then(r => r.data),
+
+  enroll: (courseId: number) =>
+    api.post<void>(`/api/courses/${courseId}/enroll`).then(r => r.data),
+
+  createCourse: (data: { title: string; description?: string; category?: string; difficulty?: string; imageUrl?: string }) =>
+    api.post<CourseDetail>('/api/courses', data).then(r => r.data),
 
   updateProgress: (courseId: number, progress: number) =>
-    api.put(`/api/courses/${courseId}/progress`, { courseId, progress }).then(r => r.data),
+    api.put(`/api/courses/${courseId}/progress`, { progress }).then(r => r.data),
 
   completeLesson: (courseId: number, lessonId: number) =>
     api.put(`/api/courses/${courseId}/lessons/${lessonId}/complete`).then(r => r.data),
