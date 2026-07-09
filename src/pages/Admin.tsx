@@ -1,21 +1,30 @@
-import React, { useEffect, useState } from 'react';
-import { Activity, Cpu, Brain, Users } from 'lucide-react';
+import React from 'react';
+import { Activity, Cpu, Brain, Users, AlertCircle, RefreshCw } from 'lucide-react';
 import { StatCard } from '../components/Cards';
 import { AdminApiRequests } from '../components/Charts';
-import { adminService } from '../services';
-import type { AdminDashboardData } from '../services';
+import { useAdminStats } from '../hooks/useAdmin';
 import { SkeletonStatCard } from '../components/Skeleton';
 import Skeleton from '../components/Skeleton';
 
 export default function Admin() {
-  const [data, setData] = useState<AdminDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading, isError, refetch } = useAdminStats();
 
-  useEffect(() => {
-    adminService.getStats().then(res => {
-      setData(res.data);
-    }).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  if (isError && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 max-w-7xl mx-auto">
+        <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
+          <AlertCircle size={24} className="text-red-500" />
+        </div>
+        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Failed to load admin stats</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[320px] text-center leading-relaxed">
+          Could not fetch system data. Check your connection and try again.
+        </p>
+        <button onClick={() => refetch()} className="flex items-center gap-2 py-2 px-4 bg-[#7C3AED] hover:bg-violet-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all">
+          <RefreshCw size={14} /> Retry
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { toggleTheme } from '../store/themeSlice';
-import { setRole } from '../store/authSlice';
+import { clearUser } from '../store/authSlice';
+import { authService } from '../services';
 
 function isActivePath(location: ReturnType<typeof useLocation>, target: string) {
   if (target === '/dashboard') return location.pathname === '/dashboard';
@@ -36,7 +37,7 @@ function getScreenConfig(path: string) {
 
 export default function Navbar() {
   const location = useLocation();
-  const role = useAppSelector((s) => s.auth.role);
+  const { role, name } = useAppSelector((s) => s.auth);
   const theme = useAppSelector((s) => s.theme.theme);
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
@@ -59,8 +60,8 @@ export default function Navbar() {
     const active = isActivePath(location, target);
     return `flex flex-col items-center justify-center text-[10px] flex-1 transition-all relative ${
       active
-        ? 'text-[#4F46E5]'
-        : 'text-slate-400 dark:text-slate-500 hover:text-[#4F46E5] dark:hover:text-[#4F46E5]'
+        ? 'text-[#7C3AED]'
+        : 'text-slate-400 dark:text-slate-500 hover:text-violet-600 dark:hover:text-violet-400'
     }`;
   };
 
@@ -77,7 +78,7 @@ export default function Navbar() {
     const active = isActivePath(location, target);
     return `w-full text-left py-3 px-4 text-sm font-semibold transition-all flex items-center gap-3.5 rounded-xl ${
       active
-        ? 'bg-gradient-to-r from-indigo-50 to-indigo-50/50 dark:from-indigo-900/30 dark:to-indigo-900/10 text-[#4F46E5] dark:text-indigo-400 shadow-sm'
+        ? 'bg-gradient-to-r from-violet-50 to-violet-50/50 dark:from-violet-900/30 dark:to-violet-900/10 text-[#7C3AED] dark:text-violet-400 shadow-sm'
         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
     }`;
   };
@@ -88,15 +89,15 @@ export default function Navbar() {
         <div className="h-[56px] md:h-[64px] px-3 md:px-6 flex items-center justify-between border-b border-slate-200/80 dark:border-slate-800/40 bg-white/80 dark:bg-[#0F172A]/80 backdrop-blur-glass transition-all">
           {/* Left: Brand + Page Title */}
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-[28px] h-[28px] rounded-lg bg-gradient-to-br from-[#4F46E5] to-[#06B6D4] flex items-center justify-center text-white shadow-sm shadow-[#4F46E5]/20 flex-shrink-0">
+            <div className="w-[28px] h-[28px] rounded-lg bg-gradient-to-br from-[#7C3AED] to-[#D97706] flex items-center justify-center text-white shadow-sm shadow-[#7C3AED]/20 flex-shrink-0">
               <GraduationCap size={14} />
             </div>
-            <span className="hidden md:inline font-heading font-extrabold text-[14px] bg-gradient-to-r from-[#4F46E5] to-[#06B6D4] bg-clip-text text-transparent flex-shrink-0">
+            <span className="hidden md:inline font-heading font-extrabold text-[14px] bg-gradient-to-r from-[#7C3AED] to-[#D97706] bg-clip-text text-transparent flex-shrink-0">
               EduMind
             </span>
             <span className="hidden md:block h-4 w-px bg-slate-300 dark:bg-slate-700 flex-shrink-0" />
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className="text-indigo-400 dark:text-indigo-400 flex-shrink-0 hidden md:block">
+              <span className="text-violet-600 dark:text-violet-400 flex-shrink-0 hidden md:block">
                 {icon}
               </span>
               <h2 className="text-[14px] font-bold text-slate-900 dark:text-slate-100 font-heading truncate">
@@ -107,13 +108,13 @@ export default function Navbar() {
 
           {/* Right: Desktop */}
           <div className="hidden md:flex items-center gap-3">
-            <div className={`relative flex items-center transition-all duration-200 ${searchFocused ? 'ring-2 ring-[#4F46E5]/20' : ''}`}>
+            <div className={`relative flex items-center transition-all duration-200 ${searchFocused ? 'ring-2 ring-[#7C3AED]/20' : ''}`}>
               <Search size={14} className="absolute left-3 text-slate-400 dark:text-slate-500" />
               <input
                 type="text"
                 onFocus={() => setSearchFocused(true)}
                 onBlur={() => setSearchFocused(false)}
-                className="w-[220px] h-[34px] pl-9 pr-10 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 text-slate-900 dark:text-slate-100 outline-none focus:border-[#4F46E5] transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className="w-[220px] h-[34px] pl-9 pr-10 text-xs rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/80 text-slate-900 dark:text-slate-100 outline-none focus:border-[#7C3AED] transition-all placeholder:text-slate-400 dark:placeholder:text-slate-500"
                 placeholder="Search anything..."
               />
               <kbd className="absolute right-2.5 text-[9px] font-medium text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
@@ -158,7 +159,7 @@ export default function Navbar() {
                   <div className="absolute right-0 top-[40px] w-[200px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl z-20 py-2 animate-fade-in">
                     <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800">
                       <p className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                        {role === 'student' ? 'Sarah Jenkins' : role === 'teacher' ? 'Dr. Foster' : 'Super Admin'}
+                        {name || (role === 'student' ? 'Student' : role === 'teacher' ? 'Teacher' : 'Admin')}
                       </p>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{role.toUpperCase()}</p>
                     </div>
@@ -167,7 +168,7 @@ export default function Navbar() {
                         <Settings size={14} />
                         Settings
                       </Link>
-                      <button onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); dispatch(setRole('student')); setProfileOpen(false); navigate('/'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all w-full cursor-pointer">
+                      <button onClick={() => { authService.logout(); dispatch(clearUser()); setProfileOpen(false); navigate('/'); }} className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all w-full cursor-pointer">
                         <LogOut size={14} />
                         Logout
                       </button>
@@ -215,12 +216,12 @@ export default function Navbar() {
                     : role === 'teacher'
                       ? "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=100&q=80"
                       : "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=100&q=80"}
-                  className="w-[38px] h-[38px] rounded-full object-cover border-2 border-[#4F46E5]/30"
+                  className="w-[38px] h-[38px] rounded-full object-cover border-2 border-[#7C3AED]/30"
                   alt="Avatar"
                 />
                 <div>
                   <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                    {role === 'student' ? 'Sarah Jenkins' : role === 'teacher' ? 'Dr. Foster' : 'Super Admin'}
+                    {name || (role === 'student' ? 'Student' : role === 'teacher' ? 'Teacher' : 'Admin')}
                   </p>
                   <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400">{role.toUpperCase()}</p>
                 </div>
@@ -232,7 +233,7 @@ export default function Navbar() {
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input
                     type="text"
-                    className="w-full h-[38px] pl-9 pr-4 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 outline-none focus:border-[#4F46E5] transition-all placeholder:text-slate-400"
+                    className="w-full h-[38px] pl-9 pr-4 text-xs rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 outline-none focus:border-[#7C3AED] transition-all placeholder:text-slate-400"
                     placeholder="Search pages..."
                   />
                 </div>
@@ -281,6 +282,13 @@ export default function Navbar() {
                   {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
                   {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
                 </button>
+                <button
+                  onClick={() => { authService.logout(); dispatch(clearUser()); setMobileMenuOpen(false); navigate('/'); }}
+                  className="w-full flex items-center justify-center gap-2.5 py-3 rounded-xl bg-rose-50 dark:bg-rose-950/20 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-all mt-2 cursor-pointer"
+                >
+                  <LogOut size={15} />
+                  Logout
+                </button>
               </div>
             </div>
           </div>
@@ -296,35 +304,35 @@ export default function Navbar() {
                 <LayoutDashboard size={20} />
                 <span className="mt-1">Home</span>
               </span>
-              {isActivePath(location, '/dashboard') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <Link to="/dashboard/courses" className={navLinkClass('/dashboard/courses')}>
               <span className={navLinkInnerClass('/dashboard/courses')}>
                 <GraduationCap size={20} />
                 <span className="mt-1">Courses</span>
               </span>
-              {isActivePath(location, '/dashboard/courses') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/courses') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <Link to="/dashboard/chat" className={navLinkClass('/dashboard/chat')}>
               <span className={navLinkInnerClass('/dashboard/chat')}>
                 <Brain size={20} />
                 <span className="mt-1">AI Tutor</span>
               </span>
-              {isActivePath(location, '/dashboard/chat') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/chat') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <Link to="/dashboard/assignments" className={navLinkClass('/dashboard/assignments')}>
               <span className={navLinkInnerClass('/dashboard/assignments')}>
                 <FileText size={20} />
                 <span className="mt-1">Assign</span>
               </span>
-              {isActivePath(location, '/dashboard/assignments') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/assignments') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <Link to="/dashboard/quiz" className={navLinkClass('/dashboard/quiz')}>
               <span className={navLinkInnerClass('/dashboard/quiz')}>
                 <Award size={20} />
                 <span className="mt-1">Quiz</span>
               </span>
-              {isActivePath(location, '/dashboard/quiz') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/quiz') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <button onClick={() => setMobileMenuOpen(true)} className={`flex flex-col items-center justify-center text-[10px] flex-1 transition-all relative ${navLinkClass('more')}`}>
               <span className="flex flex-col items-center justify-center py-1.5 px-3 rounded-xl">
@@ -341,21 +349,21 @@ export default function Navbar() {
                 <Users size={20} />
                 <span className="mt-1">Monitor</span>
               </span>
-              {isActivePath(location, '/dashboard/teacher') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/teacher') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <Link to="/dashboard/courses" className={navLinkClass('/dashboard/courses')}>
               <span className={navLinkInnerClass('/dashboard/courses')}>
                 <BookOpen size={20} />
                 <span className="mt-1">Courses</span>
               </span>
-              {isActivePath(location, '/dashboard/courses') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/courses') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <Link to="/dashboard/chat" className={navLinkClass('/dashboard/chat')}>
               <span className={navLinkInnerClass('/dashboard/chat')}>
                 <Brain size={20} />
                 <span className="mt-1">AI</span>
               </span>
-              {isActivePath(location, '/dashboard/chat') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/chat') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
           </>
         )}
@@ -366,21 +374,21 @@ export default function Navbar() {
                 <ShieldAlert size={20} />
                 <span className="mt-1">Admin</span>
               </span>
-              {isActivePath(location, '/dashboard/admin') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/admin') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <Link to="/dashboard" className={navLinkClass('/dashboard')}>
               <span className={navLinkInnerClass('/dashboard')}>
                 <LayoutDashboard size={20} />
                 <span className="mt-1">Student</span>
               </span>
-              {isActivePath(location, '/dashboard') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
             <Link to="/dashboard/teacher" className={navLinkClass('/dashboard/teacher')}>
               <span className={navLinkInnerClass('/dashboard/teacher')}>
                 <Users size={20} />
                 <span className="mt-1">Teacher</span>
               </span>
-              {isActivePath(location, '/dashboard/teacher') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#4F46E5] rounded-full" />}
+              {isActivePath(location, '/dashboard/teacher') && <span className="absolute -top-0.5 w-[16px] h-[3px] bg-[#7C3AED] rounded-full" />}
             </Link>
           </>
         )}

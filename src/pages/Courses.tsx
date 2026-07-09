@@ -1,26 +1,51 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Play, FileText, CheckCircle2, ChevronRight, ChevronLeft, Brain, Send, Check } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Play, FileText, CheckCircle2, ChevronRight, ChevronLeft, Brain, Send, Check, GraduationCap, Sparkles } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setCoursesList, setSelectedCourse, setActiveLesson, updateCourseProgress } from '../store/coursesSlice';
-import { addChatMessage, setActiveChatId, setAiTyping } from '../store/chatSlice';
-import type { Lesson } from '../types';
-import { courseService, chatService } from '../services';
-import type { CourseDetail, ModuleDto, LessonDto } from '../services';
+import { setSelectedCourse, setActiveLesson } from '../store/coursesSlice';
+import { setActiveChatId, setAiTyping } from '../store/chatSlice';
+import { useCourses, useCourseDetail, useEnrollCourse, useCompleteLesson, useUpdateProgress } from '../hooks/useCourses';
+import { useCreateConversation, useSendMessage } from '../hooks/useChat';
+import type { ModuleDto, LessonDto } from '../services';
 import { SkeletonLessonItem } from '../components/Skeleton';
 import Skeleton from '../components/Skeleton';
 
 export default function Courses() {
-  const coursesList = useAppSelector((s) => s.courses.coursesList);
   const selectedCourse = useAppSelector((s) => s.courses.selectedCourse);
   const activeLesson = useAppSelector((s) => s.courses.activeLesson);
-  const chatHistory = useAppSelector((s) => s.chat.chatHistory);
   const aiTyping = useAppSelector((s) => s.chat.aiTyping);
   const activeChatId = useAppSelector((s) => s.chat.activeChatId);
   const dispatch = useAppDispatch();
   const [assistantInput, setAssistantInput] = useState('');
-  const [courseDetail, setCourseDetail] = useState<CourseDetail | null>(null);
-  const [_, setActiveConvId] = useState<number | null>(null);
-  const [completing, setCompleting] = useState(false);
+  const [localChatMessages, setLocalChatMessages] = useState<{ id: number; sender: string; text: string }[]>([]);
+
+  const { data: coursesData } = useCourses();
+  const { data: courseDetail, isLoading: loadingCourse } = useCourseDetail(selectedCourse?.id ? Number(selectedCourse.id) : undefined);
+  const enrollMutation = useEnrollCourse();
+  const completeMutation = useCompleteLesson();
+  const updateProgressMutation = useUpdateProgress();
+  const createConvMutation = useCreateConversation();
+  const sendMsgMutation = useSendMessage();
+
+  React.useEffect(() => {
+    if (!selectedCourse?.id && coursesData && coursesData.length > 0) {
+      dispatch(setSelectedCourse(coursesData[0] as unknown as Parameters<typeof setSelectedCourse>[0]));
+    }
+  }, [coursesData]);
+
+  React.useEffect(() => {
+    if (courseDetail) {
+      const flat = courseDetail.modules.flatMap(m => m.lessons);
+      const first = flat.find(l => !l.completed) || flat[0];
+      if (first && !activeLesson.id) {
+        dispatch(setActiveLesson({
+          id: String(first.id),
+          title: first.title,
+          duration: first.duration,
+          type: first.type,
+        }));
+      }
+    }
+  }, [courseDetail]);
 
   const allLessons = useMemo(() => courseDetail?.modules.flatMap(m => m.lessons) ?? [], [courseDetail]);
   const currentIndex = useMemo(() => allLessons.findIndex(l => String(l.id) === activeLesson.id), [allLessons, activeLesson.id]);
@@ -32,43 +57,6 @@ export default function Courses() {
   const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
   const isLessonCompleted = currentLesson?.completed ?? false;
 
-  useEffect(() => {
-    if (!selectedCourse?.id) {
-      if (coursesList.length > 0) {
-        dispatch(setSelectedCourse(coursesList[0]));
-      } else {
-        courseService.getCourses().then(res => {
-          dispatch(setCoursesList(res.data));
-          if (res.data.length > 0) {
-            dispatch(setSelectedCourse(res.data[0]));
-          }
-        }).catch(console.error);
-      }
-    }
-  }, []);
-
-  const [loadingCourse, setLoadingCourse] = useState(true);
-
-  useEffect(() => {
-    if (selectedCourse?.id) {
-      setLoadingCourse(true);
-      courseService.getCourseDetail(Number(selectedCourse.id)).then(res => {
-        setCourseDetail(res.data);
-        dispatch(updateCourseProgress({ courseId: String(selectedCourse.id), progress: res.data.progress }));
-        const flat = res.data.modules.flatMap(m => m.lessons);
-        const first = flat.find(l => !l.completed) || flat[0];
-        if (first) {
-          dispatch(setActiveLesson({
-            id: String(first.id),
-            title: first.title,
-            duration: first.duration,
-            type: first.type,
-          }));
-        }
-      }).catch(console.error).finally(() => setLoadingCourse(false));
-    }
-  }, [selectedCourse?.id]);
-
   const navigateToLesson = useCallback((lesson: LessonDto) => {
     dispatch(setActiveLesson({
       id: String(lesson.id),
@@ -79,16 +67,12 @@ export default function Courses() {
   }, [dispatch]);
 
   const handleCompleteAndNext = useCallback(async () => {
-    if (!courseDetail || !currentLesson || completing) return;
-    setCompleting(true);
+    if (!courseDetail || !currentLesson) return;
     try {
-      await courseService.completeLesson(courseDetail.id, currentLesson.id);
+      await completeMutation.mutateAsync({ courseId: courseDetail.id, lessonId: currentLesson.id });
       const newCompletedCount = completedCount + (isLessonCompleted ? 0 : 1);
       const newProgress = totalCount > 0 ? Math.round((newCompletedCount / totalCount) * 100) : 0;
-      await courseService.updateProgress(courseDetail.id, newProgress);
-      const refreshed = await courseService.getCourseDetail(courseDetail.id);
-      setCourseDetail(refreshed.data);
-      dispatch(updateCourseProgress({ courseId: String(courseDetail.id), progress: newProgress }));
+      await updateProgressMutation.mutateAsync({ courseId: courseDetail.id, progress: newProgress });
       if (nextLesson) {
         navigateToLesson(nextLesson);
       } else {
@@ -96,10 +80,8 @@ export default function Courses() {
       }
     } catch (err) {
       console.error('Failed to complete lesson:', err);
-    } finally {
-      setCompleting(false);
     }
-  }, [courseDetail, currentLesson, completing, completedCount, isLessonCompleted, totalCount, nextLesson, dispatch, navigateToLesson]);
+  }, [courseDetail, currentLesson, completedCount, isLessonCompleted, totalCount, nextLesson, dispatch, navigateToLesson]);
 
   const handleVideoEnded = useCallback(() => {
     if (!isLessonCompleted) {
@@ -111,29 +93,40 @@ export default function Courses() {
     if (!assistantInput.trim()) return;
     const userText = assistantInput;
     setAssistantInput('');
-    dispatch(addChatMessage({ id: Date.now(), sender: 'student', text: userText }));
+    setLocalChatMessages(prev => [...prev, { id: Date.now(), sender: 'student', text: userText }]);
     dispatch(setAiTyping(true));
 
     try {
       let convId = activeChatId;
       if (!convId) {
-        const conv = await chatService.createConversation(userText.slice(0, 50));
-        convId = conv.data.id;
+        const conv = await createConvMutation.mutateAsync(userText.slice(0, 50));
+        convId = conv.id;
         dispatch(setActiveChatId(convId));
-        setActiveConvId(convId);
       }
-      const res = await chatService.sendMessage(convId, userText);
-      dispatch(addChatMessage({ id: res.data.id, sender: res.data.sender.toLowerCase() === 'ai' ? 'ai' : 'student', text: res.data.text }));
+      const res = await sendMsgMutation.mutateAsync({ conversationId: convId, text: userText });
+      setLocalChatMessages(prev => [...prev, { id: res.id, sender: res.sender.toLowerCase() === 'ai' ? 'ai' : 'student', text: res.text }]);
     } catch {
-      dispatch(addChatMessage({ id: Date.now() + 1, sender: 'ai', text: 'I apologize, but I encountered an error processing your request. Please try again.' }));
+      setLocalChatMessages(prev => [...prev, { id: Date.now() + 1, sender: 'ai', text: 'I apologize, but I encountered an error processing your request. Please try again.' }]);
     } finally {
       dispatch(setAiTyping(false));
     }
   };
 
+  const isEnrolled = (courseDetail?.progress ?? 0) > 0;
+
+  const handleEnroll = async () => {
+    if (!courseDetail) return;
+    try {
+      await enrollMutation.mutateAsync(courseDetail.id);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Enroll failed';
+      console.error('Failed to enroll:', message);
+    }
+  };
+
   const isComplete = activeLesson.id === 'complete';
 
-  if (loadingCourse && !courseDetail) {
+  if (loadingCourse) {
     return (
       <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white/40 dark:bg-slate-900/20 p-5 rounded-2xl border border-slate-200/60 dark:border-white/5">
@@ -212,7 +205,7 @@ export default function Courses() {
                 r="16"
                 fill="none"
                 stroke="currentColor"
-                className="text-[#4F46E5]"
+                className="text-[#7C3AED]"
                 strokeWidth="3.5"
                 strokeDasharray="100"
                 strokeDashoffset={100 - progress}
@@ -251,13 +244,13 @@ export default function Courses() {
                         onClick={() => navigateToLesson(les)}
                         className={`flex items-center gap-2.5 px-3 py-2 text-[11px] font-bold rounded-lg text-left transition-all border cursor-pointer ${
                           isActive
-                            ? 'bg-indigo-500/10 border-indigo-500 text-[#4F46E5] dark:text-indigo-400'
+                            ? 'bg-indigo-500/10 border-indigo-500 text-[#7C3AED] dark:text-indigo-400'
                             : 'border-transparent text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-255'
                         }`}
                       >
                         {les.completed ? (
                           <CheckCircle2 size={11} className="text-emerald-500" />
-                        ) : les.type === 'video' ? (
+                        ) : les.type?.toLowerCase() === 'video' ? (
                           <Play size={11} />
                         ) : (
                           <FileText size={11} />
@@ -275,7 +268,34 @@ export default function Courses() {
 
         {/* Center: Lesson Workspace */}
         <div className="space-y-6">
-          {isComplete ? (
+          {!isEnrolled && courseDetail ? (
+            <div className="glass-panel p-10 min-h-[360px] border border-slate-200/60 dark:border-slate-800/40 bg-white/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 rounded-full bg-indigo-500/10 dark:bg-indigo-400/10 flex items-center justify-center mb-4">
+                <GraduationCap size={32} className="text-[#7C3AED]" />
+              </div>
+              <h2 className="text-xl font-heading font-bold text-slate-900 dark:text-white mb-2">
+                {courseDetail.title}
+              </h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mb-2 leading-relaxed">
+                {courseDetail.description}
+              </p>
+              <div className="flex gap-2.5 mb-6">
+                <span className="badge badge-primary text-[10px] px-2.5">{courseDetail.category}</span>
+                <span className="badge badge-secondary text-[10px] px-2.5">{courseDetail.difficulty}</span>
+              </div>
+              <button
+                onClick={handleEnroll}
+                disabled={enrollMutation.isPending}
+                className="py-3 px-8 bg-[#7C3AED] hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg text-sm font-bold flex items-center gap-2 shadow-lg shadow-indigo-500/15 cursor-pointer transition-all"
+              >
+                {enrollMutation.isPending ? (
+                  <>Enrolling...</>
+                ) : (
+                  <><Sparkles size={16} /> Enroll in Course</>
+                )}
+              </button>
+            </div>
+          ) : isComplete ? (
             <div className="glass-panel p-8 min-h-[360px] border border-slate-200/60 dark:border-slate-800/40 bg-white/50 dark:bg-slate-900/30 flex flex-col items-center justify-center text-center">
               <CheckCircle2 size={48} className="text-emerald-500 mb-4" />
               <h2 className="text-xl font-heading font-bold text-slate-900 dark:text-white mb-2">Course Complete!</h2>
@@ -283,7 +303,7 @@ export default function Courses() {
                 You have completed all lessons in this course. Great job!
               </p>
             </div>
-          ) : currentLesson?.type === 'video' ? (
+          ) : currentLesson?.type?.toLowerCase() === 'video' ? (
             <div className="w-full aspect-video rounded-2xl bg-black border border-slate-200 dark:border-slate-850 overflow-hidden shadow-lg relative">
               <video
                 controls
@@ -301,7 +321,7 @@ export default function Courses() {
             </div>
           )}
 
-          {!isComplete && (
+          {!isComplete && isEnrolled && (
             <div className="flex items-center justify-between">
               <div>
                 {isLessonCompleted ? (
@@ -311,11 +331,11 @@ export default function Courses() {
                 ) : (
                   <button
                     onClick={handleCompleteAndNext}
-                    disabled={completing}
+                    disabled={completeMutation.isPending}
                     className="py-2 px-5 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center gap-2 cursor-pointer"
                   >
                     <Check size={14} />
-                    {completing ? 'Saving...' : nextLesson ? 'Mark Complete & Next' : 'Mark Complete'}
+                    {completeMutation.isPending ? 'Saving...' : nextLesson ? 'Mark Complete & Next' : 'Mark Complete'}
                   </button>
                 )}
               </div>
@@ -331,7 +351,7 @@ export default function Courses() {
                 {nextLesson && (
                   <button
                     onClick={() => navigateToLesson(nextLesson)}
-                    className="py-2 px-4 bg-[#4F46E5] hover:bg-indigo-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                    className="py-2 px-4 bg-[#7C3AED] hover:bg-violet-600 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                   >
                     Next <ChevronRight size={14} />
                   </button>
@@ -340,17 +360,19 @@ export default function Courses() {
             </div>
           )}
 
-          <div className="glass-panel p-5 border border-slate-200/60 dark:border-slate-800/40 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
-            <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Lesson notes</h4>
-            Understand the theoretical frameworks of this module before taking corresponding check quizzes. Reach out in the right panel AI tutor chat console if you have queries.
-          </div>
+          {isEnrolled && (
+            <div className="glass-panel p-5 border border-slate-200/60 dark:border-slate-800/40 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+              <h4 className="font-bold text-slate-800 dark:text-slate-200 mb-1">Lesson notes</h4>
+              Understand the theoretical frameworks of this module before taking corresponding check quizzes. Reach out in the right panel AI tutor chat console if you have queries.
+            </div>
+          )}
         </div>
 
         {/* Right Side: AI Assistant */}
         <div className="hidden lg:flex glass-panel p-4 border border-slate-200/60 dark:border-slate-800/40 flex-col h-[calc(100vh-210px)] bg-white/40 dark:bg-[#0F172A]/40">
           <div className="pb-3 border-b border-slate-200 dark:border-slate-800/60 mb-3.5">
             <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-              <Brain size={14} className="text-[#4F46E5]" /> AI Assistant
+              <Brain size={14} className="text-[#7C3AED]" /> AI Assistant
             </h3>
             <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold mt-0.5 block">
               Ask about "{currentLesson?.title || activeLesson.title}"
@@ -362,12 +384,12 @@ export default function Courses() {
             <div className="bg-slate-50 dark:bg-slate-900/40 border border-slate-200/40 dark:border-slate-800/40 p-3 rounded-xl text-[11px] leading-relaxed text-slate-600 dark:text-slate-400">
               <strong>AI:</strong> Ask me questions about this lesson!
             </div>
-            {chatHistory.slice(-3).map((chat, idx) => (
+            {localChatMessages.slice(-3).map((chat, idx) => (
               <div
                 key={idx}
                 className={`p-3 rounded-xl text-[11px] leading-relaxed text-left ${
                   chat.sender === 'student'
-                    ? 'bg-indigo-500/10 border border-indigo-500/20 text-[#4F46E5] dark:text-indigo-400'
+                    ? 'bg-indigo-500/10 border border-indigo-500/20 text-[#7C3AED] dark:text-indigo-400'
                     : 'bg-slate-50 dark:bg-slate-900/60 border border-slate-200/40 dark:border-slate-800/30 text-slate-800 dark:text-slate-200'
                 }`}
               >
@@ -392,11 +414,11 @@ export default function Courses() {
               value={assistantInput}
               onChange={(e) => setAssistantInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSendAssistantMessage()}
-              className="flex-grow h-[36px] text-[11px] rounded-lg border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-900 px-3 outline-none focus:border-[#4F46E5]"
+              className="flex-grow h-[36px] text-[11px] rounded-lg border border-slate-250 dark:border-slate-850 bg-white dark:bg-slate-900 px-3 outline-none focus:border-[#7C3AED]"
             />
             <button
               onClick={handleSendAssistantMessage}
-              className="w-9 h-9 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white flex items-center justify-center flex-shrink-0 cursor-pointer shadow-md shadow-indigo-500/10"
+              className="w-9 h-9 rounded-lg bg-[#7C3AED] hover:bg-violet-950 text-white flex items-center justify-center flex-shrink-0 cursor-pointer shadow-md shadow-indigo-500/10"
             >
               <Send size={12} />
             </button>

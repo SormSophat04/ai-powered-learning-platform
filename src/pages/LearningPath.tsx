@@ -1,27 +1,35 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Check, ChevronRight } from 'lucide-react';
-import { learningPathService } from '../services';
-import type { LearningPathData } from '../services';
+import { Sparkles, Check, ChevronRight, TrendingUp, AlertCircle, RefreshCw } from 'lucide-react';
+import { useAppSelector } from '../store/hooks';
+import { useLearningPath, useRecommendation } from '../hooks/useLearningPath';
 import { SkeletonMilestone } from '../components/Skeleton';
 import Skeleton from '../components/Skeleton';
 
 export default function LearningPath() {
+  const role = useAppSelector((s) => s.auth.role);
   const navigate = useNavigate();
-  const [data, setData] = useState<LearningPathData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: pathData, isLoading: pathLoading, isError: pathError, refetch: refetchPath } = useLearningPath();
+  const { data: recData } = useRecommendation();
 
-  useEffect(() => {
-    Promise.all([
-      learningPathService.getLearningPath(),
-      learningPathService.getRecommendation(),
-    ]).then(([pathRes, recRes]) => {
-      setData({
-        milestones: pathRes.data.milestones,
-        recommendation: recRes.data,
-      });
-    }).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  const loading = pathLoading;
+
+  if (pathError && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 max-w-7xl mx-auto">
+        <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
+          <AlertCircle size={24} className="text-red-500" />
+        </div>
+        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Failed to load learning path</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[320px] text-center leading-relaxed">
+          Could not fetch your personalized path. Check your connection and try again.
+        </p>
+        <button onClick={() => refetchPath()} className="flex items-center gap-2 py-2 px-4 bg-[#7C3AED] hover:bg-violet-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all">
+          <RefreshCw size={14} /> Retry
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -51,7 +59,23 @@ export default function LearningPath() {
     );
   }
 
-  const milestones = data?.milestones || [];
+  if (role !== 'student') {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="w-14 h-14 rounded-full bg-indigo-500/10 flex items-center justify-center">
+          <TrendingUp size={24} className="text-[#7C3AED]" />
+        </div>
+        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+          {role === 'teacher' ? 'Teacher View' : 'Admin View'}
+        </p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[320px] text-center leading-relaxed">
+          Personalized learning path is a student-only feature. Switch to a student account to view your AI-generated curriculum milestones.
+        </p>
+      </div>
+    );
+  }
+
+  const milestones = pathData?.milestones || [];
 
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
@@ -113,19 +137,19 @@ export default function LearningPath() {
         </div>
 
         {/* Right Side: recommendations panel */}
-        <div className="glass-panel p-6 border border-[#4F46E5]/15 bg-indigo-500/5 dark:bg-indigo-400/5 h-fit space-y-4">
+        <div className="glass-panel p-6 border border-[#7C3AED]/15 bg-indigo-500/5 dark:bg-indigo-400/5 h-fit space-y-4">
           <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-            <Sparkles size={14} className="text-[#4F46E5]" /> AI Recommendation
+            <Sparkles size={14} className="text-[#7C3AED]" /> AI Recommendation
           </h3>
           <div className="bg-white dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200/40 dark:border-slate-850/40">
-            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-1.5">Next milestone priority: {data?.recommendation.title || 'N/A'}</h4>
+            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 mb-1.5">Next milestone priority: {recData?.title || 'N/A'}</h4>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-              {data?.recommendation.description || 'No recommendation available.'}
+              {recData?.description || 'No recommendation available.'}
             </p>
           </div>
           <button 
             onClick={() => navigate('/dashboard/courses')}
-            className="w-full py-2.5 rounded-lg bg-[#4F46E5] hover:bg-indigo-750 text-white text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center justify-center gap-1 cursor-pointer"
+            className="w-full py-2.5 rounded-lg bg-[#7C3AED] hover:bg-violet-950 text-white text-xs font-bold shadow-md shadow-indigo-500/10 flex items-center justify-center gap-1 cursor-pointer"
           >
             Resume Curriculum <ChevronRight size={14} />
           </button>

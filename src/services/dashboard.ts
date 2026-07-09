@@ -21,8 +21,8 @@ export interface RecentActivity {
 
 export const dashboardService = {
   getStats: () =>
-    api.get<{ success: boolean; message: string; data: DashboardStats }>('/api/dashboard/stats').then(r => r.data),
+    api.get<DashboardStats>('/api/dashboard/stats').then(r => r.data),
 
   getRecentActivity: () =>
-    api.get<{ success: boolean; message: string; data: RecentActivity }>('/api/dashboard/recent-activity').then(r => r.data),
+    api.get<RecentActivity>('/api/dashboard/recent-activity').then(r => r.data),
 };

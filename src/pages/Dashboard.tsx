@@ -1,33 +1,45 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, FileText, Award, Activity, ChevronRight } from 'lucide-react';
+import { BookOpen, FileText, Award, Activity, AlertCircle, ChevronRight, RefreshCw } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setCoursesList, setSelectedCourse } from '../store/coursesSlice';
+import { setSelectedCourse } from '../store/coursesSlice';
 import { StatCard, ActivityCard } from '../components/Cards';
 import { PerformanceChart, StudyHoursBar } from '../components/Charts';
-import { dashboardService, courseService } from '../services';
-import type { DashboardStats, ActivityEntry, CourseSummary } from '../services';
+import { useDashboardStats, useRecentActivity } from '../hooks/useDashboard';
+import { useCourses } from '../hooks/useCourses';
+import type { CourseSummary } from '../services';
 import Skeleton, { SkeletonStatCard, SkeletonChart, SkeletonCourseCard, SkeletonActivityItem } from '../components/Skeleton';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const coursesList = useAppSelector((s) => s.courses.coursesList);
+  const role = useAppSelector((s) => s.auth.role);
   const dispatch = useAppDispatch();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [activities, setActivities] = useState<ActivityEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useDashboardStats();
+  const { data: activityData, isLoading: activityLoading, isError: activityError, refetch: refetchActivity } = useRecentActivity();
+  const { data: coursesData, isLoading: coursesLoading, isError: coursesError, refetch: refetchCourses } = useCourses();
 
-  useEffect(() => {
-    Promise.all([
-      dashboardService.getStats(),
-      dashboardService.getRecentActivity(),
-      courseService.getCourses(),
-    ]).then(([statsRes, activityRes, coursesRes]) => {
-      setStats(statsRes.data);
-      setActivities(activityRes.data.recentActivity);
-      dispatch(setCoursesList(coursesRes.data));
-    }).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  const loading = statsLoading || activityLoading || coursesLoading;
+  const hasError = statsError || activityError || coursesError;
+
+  if (hasError && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 max-w-7xl mx-auto">
+        <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
+          <AlertCircle size={24} className="text-red-500" />
+        </div>
+        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Failed to load dashboard</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[320px] text-center leading-relaxed">
+          Could not fetch your data. Check your connection and try again.
+        </p>
+        <button
+          onClick={() => { refetchStats(); refetchActivity(); refetchCourses(); }}
+          className="flex items-center gap-2 py-2 px-4 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all"
+        >
+          <RefreshCw size={14} /> Retry
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -56,6 +68,22 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (role !== 'student') {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-3">
+        <div className="w-14 h-14 rounded-full bg-indigo-500/10 flex items-center justify-center">
+          <Activity size={24} className="text-[#7C3AED]" />
+        </div>
+        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+          {role === 'teacher' ? 'Teacher View' : 'Admin View'}
+        </p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[320px] text-center leading-relaxed">
+          The student dashboard is only available for students. Use the navigation to access your {role === 'teacher' ? 'teacher' : 'admin'} dashboard.
+        </p>
       </div>
     );
   }
@@ -115,18 +143,18 @@ export default function Dashboard() {
         <div className="glass-panel p-6 text-left border border-slate-200/60 dark:border-slate-800/40">
           <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">Enrolled Courses</h3>
           <div className="space-y-3.5">
-            {coursesList.map((course: any) => (
+            {(coursesData ?? []).map((course: CourseSummary) => (
               <div 
                 key={course.id} 
-                onClick={() => { dispatch(setSelectedCourse(course)); navigate('/dashboard/courses'); }}
+                onClick={() => { dispatch(setSelectedCourse(course as unknown as Parameters<typeof setSelectedCourse>[0])); navigate('/dashboard/courses'); }}
                 className="glass-card p-4 flex items-center gap-4 cursor-pointer border border-slate-200/60 dark:border-white/5"
               >
-                <img src={course.imageUrl || course.image} className="w-16 h-11 rounded-lg object-cover" alt={course.title} />
+                <img src={course.imageUrl} className="w-16 h-11 rounded-lg object-cover" alt={course.title} />
                 <div className="flex-grow min-w-0">
                   <h4 className="text-[13px] font-bold text-slate-800 dark:text-slate-100 truncate mb-1">{course.title}</h4>
                   <div className="flex items-center gap-3">
                     <div className="w-24 h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden flex-shrink-0">
-                      <div className="h-full bg-gradient-to-r from-indigo-500 to-cyan-400" style={{ width: `${course.progress}%` }}></div>
+                      <div className="h-full bg-gradient-to-r from-[#7C3AED] to-[#D97706]" style={{ width: `${course.progress}%` }}></div>
                     </div>
                     <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold">{course.progress}%</span>
                   </div>
@@ -141,7 +169,7 @@ export default function Dashboard() {
         <div className="glass-panel p-6 text-left border border-slate-200/60 dark:border-slate-800/40">
           <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider">Academic Activity Log</h3>
           <div className="space-y-4">
-            {activities.map(act => (
+            {(activityData?.recentActivity ?? []).map(act => (
               <ActivityCard 
                 key={act.id} 
                 text={act.text} 
@@ -163,7 +191,7 @@ export default function Dashboard() {
 // Inline fallback mini-icons
 function TrendingUpIcon() {
   return (
-    <svg className="w-4 h-4 text-[#4F46E5]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <svg className="w-4 h-4 text-[#7C3AED]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
     </svg>
   );

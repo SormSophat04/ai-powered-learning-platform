@@ -9,7 +9,6 @@ export interface RegisterRequest {
   name: string;
   email: string;
   password: string;
-  role: 'STUDENT' | 'TEACHER' | 'ADMIN';
 }
 
 export interface AuthResponse {
@@ -32,11 +31,16 @@ export interface UserResponse {
 
 export const authService = {
   login: (data: LoginRequest) =>
-    api.post<{ success: boolean; message: string; data: AuthResponse }>('/api/auth/login', data).then(r => r.data),
+    api.post<AuthResponse>('/api/auth/login', data).then(r => r.data),
 
   register: (data: RegisterRequest) =>
-    api.post<{ success: boolean; message: string; data: AuthResponse }>('/api/auth/register', data).then(r => r.data),
+    api.post<AuthResponse>('/api/auth/register', data).then(r => r.data),
 
   getMe: () =>
-    api.get<{ success: boolean; message: string; data: UserResponse }>('/api/users/me').then(r => r.data),
+    api.get<UserResponse>('/api/users/me').then(r => r.data),
+
+  logout: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  },
 };

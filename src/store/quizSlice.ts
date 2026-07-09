@@ -1,11 +1,12 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import type { QuizData, QuizResult } from '../services/quiz';
 
 interface QuizState {
   quizTopic: string;
   quizDifficulty: string;
   quizCount: number;
   quizRunning: boolean;
-  currentQuiz: any;
+  currentQuiz: QuizData | null;
   quizCurrentIndex: number;
   quizSelectedAnswer: number | null;
   quizAnswersRecord: (number | null)[];
@@ -41,7 +42,7 @@ const quizSlice = createSlice({
     setQuizCount(state, action: PayloadAction<number>) {
       state.quizCount = action.payload;
     },
-    startQuiz(state, action: PayloadAction<any>) {
+    startQuiz(state, action: PayloadAction<QuizData>) {
       state.currentQuiz = action.payload;
       state.quizCurrentIndex = 0;
       state.quizSelectedAnswer = null;
@@ -77,7 +78,7 @@ const quizSlice = createSlice({
       state.currentQuiz = null;
       state.quizCompleted = false;
     },
-    finishQuiz(state, action: PayloadAction<{ score: number; answersRecord: (number | null)[]; result: any }>) {
+    finishQuiz(state, action: PayloadAction<{ score: number; answersRecord: (number | null)[]; result: QuizResult }>) {
       state.quizAnswersRecord = action.payload.answersRecord;
       state.quizScore = action.payload.score;
       state.quizCompleted = true;

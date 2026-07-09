@@ -22,8 +22,8 @@ export interface LearningPathData {
 
 export const learningPathService = {
   getLearningPath: () =>
-    api.get<{ success: boolean; message: string; data: LearningPathData }>('/api/learning-path').then(r => r.data),
+    api.get<LearningPathData>('/api/learning-path').then(r => r.data),
 
   getRecommendation: () =>
-    api.get<{ success: boolean; message: string; data: Recommendation }>('/api/learning-path/recommendation').then(r => r.data),
+    api.get<Recommendation>('/api/learning-path/recommendation').then(r => r.data),
 };

@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Upload, FileCheck, Sparkles, Check, FileText } from 'lucide-react';
+import { Upload, FileCheck, Sparkles, FileText } from 'lucide-react';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
-import { setAssignments, setActiveAssignmentId, setUploadedFile, setUploadProgress, setAiFeedback, submitAssignment } from '../store/assignmentsSlice';
-import { assignmentService } from '../services';
+import { setActiveAssignmentId, setUploadedFile, setUploadProgress } from '../store/assignmentsSlice';
+import { useAssignments, useSubmitAssignment } from '../hooks/useAssignments';
+import type { FeedbackDto } from '../services';
 import { SkeletonAssignmentCard } from '../components/Skeleton';
 import Skeleton from '../components/Skeleton';
 
@@ -11,38 +12,30 @@ function formatStatus(status: string): string {
 }
 
 export default function Assignments() {
-  const assignments = useAppSelector((s) => s.assignments.assignments);
   const activeAssignmentId = useAppSelector((s) => s.assignments.activeAssignmentId);
   const uploadedFile = useAppSelector((s) => s.assignments.uploadedFile);
-  const uploadProgress = useAppSelector((s) => s.assignments.uploadProgress);
-  const aiFeedback = useAppSelector((s) => s.assignments.aiFeedback);
+  const role = useAppSelector((s) => s.auth.role);
   const dispatch = useAppDispatch();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<FeedbackDto | null>(null);
+  const submitAssignmentMutation = useSubmitAssignment();
+  const { data: assignmentsData, isLoading: loading, error: fetchError } = useAssignments();
+
+  const assignments = (assignmentsData ?? []).map(a => ({
+    id: String(a.id),
+    title: a.title,
+    course: a.courseName,
+    dueDate: a.dueDate,
+    status: formatStatus(a.status),
+    score: a.score,
+    feedback: a.feedback,
+    file: a.fileUrl,
+  }));
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
-    assignmentService.getAssignments().then(res => {
-      const mapped = res.data.map(a => ({
-        id: String(a.id),
-        title: a.title,
-        course: a.courseName,
-        dueDate: a.dueDate,
-        status: formatStatus(a.status),
-        score: a.score,
-        feedback: a.feedback,
-        file: a.fileUrl,
-      }));
-      dispatch(setAssignments(mapped));
-      if (mapped.length > 0 && !activeAssignmentId) {
-        dispatch(setActiveAssignmentId(mapped[0].id));
-      }
-    }).catch(err => {
-      console.error(err);
-      setError('Failed to load assignments. Make sure you are logged in as a student.');
-    }).finally(() => setLoading(false));
-  }, []);
+    if (assignments.length > 0 && !activeAssignmentId) {
+      dispatch(setActiveAssignmentId(assignments[0].id));
+    }
+  }, [assignmentsData]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
@@ -50,21 +43,27 @@ export default function Assignments() {
     
     dispatch(setUploadedFile(fileName));
     dispatch(setUploadProgress(10));
-    dispatch(setAiFeedback(null));
+    setAiFeedback(null);
 
     try {
-      const res = await assignmentService.submitAssignment(Number(activeAssignmentId), fileName);
+      const res = await submitAssignmentMutation.mutateAsync({ id: Number(activeAssignmentId), file: file! });
       dispatch(setUploadProgress(100));
-      const feedback = res.data.feedback;
-      dispatch(setAiFeedback(feedback));
-      dispatch(submitAssignment({ asgId: activeAssignmentId, file: fileName, feedback }));
+      const feedback = res.feedback;
+      setAiFeedback(feedback);
     } catch (err) {
       console.error('Upload failed:', err);
       dispatch(setUploadProgress(0));
+      dispatch(setUploadedFile(null));
     }
   };
 
   const activeAsg = assignments.find(a => a.id === activeAssignmentId) || assignments[0];
+
+  useEffect(() => {
+    if (activeAsg) {
+      setAiFeedback(activeAsg.feedback);
+    }
+  }, [activeAsg?.id, activeAsg?.feedback]);
 
   if (loading) {
     return (
@@ -93,15 +92,30 @@ export default function Assignments() {
     );
   }
 
-  if (error) {
+  if (fetchError) {
     return (
       <div className="flex items-center justify-center h-64 text-red-400 text-xs">
-        {error}
+        Failed to load assignments. Please try again later.
       </div>
     );
   }
 
   if (!activeAsg) {
+    if (role !== 'student') {
+      return (
+        <div className="flex flex-col items-center justify-center h-64 gap-3">
+          <div className="w-14 h-14 rounded-full bg-indigo-500/10 flex items-center justify-center">
+            <FileText size={24} className="text-[#7C3AED]" />
+          </div>
+          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">
+            {role === 'teacher' ? 'Teacher View' : 'Admin View'}
+          </p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[320px] text-center leading-relaxed">
+            Assignment submissions are managed through the student interface. Switch to a student account to view and manage assignments.
+          </p>
+        </div>
+      );
+    }
     return (
       <div className="flex items-center justify-center h-64 text-slate-400 text-xs">
         No assignments found for your account.
@@ -126,11 +140,11 @@ export default function Assignments() {
                   dispatch(setActiveAssignmentId(asg.id));
                   dispatch(setUploadedFile(asg.file));
                   dispatch(setUploadProgress(asg.file ? 100 : 0));
-                  dispatch(setAiFeedback(asg.feedback));
+                  setAiFeedback(asg.feedback);
                 }}
                 className={`glass-card p-5 cursor-pointer text-left transition-all border border-slate-200/60 ${
                   isActive 
-                    ? 'border-[#4F46E5] border-l-4 bg-gradient-to-r from-indigo-500/5 to-indigo-500/10' 
+                    ? 'border-[#7C3AED] border-l-4 bg-gradient-to-r from-indigo-500/5 to-indigo-500/10' 
                     : 'border-slate-200 dark:border-white/5 dark:bg-slate-900/30'
                 }`}
               >
@@ -165,15 +179,15 @@ export default function Assignments() {
 
             {/* Upload Zone */}
             {!uploadedFile ? (
-              <div className="drag-drop-zone border-2 border-dashed border-slate-200 dark:border-slate-800/80 hover:border-[#4F46E5]/60 hover:bg-slate-50/50 dark:hover:bg-slate-900/20 p-8 rounded-2xl flex flex-col items-center gap-3 cursor-pointer transition-all">
-                <div className="w-12 h-12 rounded-full bg-[#4F46E5]/10 text-[#4F46E5] flex items-center justify-center">
+              <div className="drag-drop-zone border-2 border-dashed border-slate-200 dark:border-slate-800/80 hover:border-[#7C3AED]/60 hover:bg-slate-50/50 dark:hover:bg-slate-900/20 p-8 rounded-2xl flex flex-col items-center gap-3 cursor-pointer transition-all">
+                <div className="w-12 h-12 rounded-full bg-[#7C3AED]/10 text-[#7C3AED] flex items-center justify-center">
                   <Upload size={20} />
                 </div>
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100">Upload your submission report</h4>
                 <p className="text-[10px] text-slate-400 dark:text-slate-500 max-w-[280px] text-center leading-normal">
                   Drag and drop files here, or choose a file to perform a localized pre-check.
                 </p>
-                <label className="py-1.5 px-4 bg-[#4F46E5] hover:bg-indigo-750 text-white rounded-lg text-[10px] font-bold shadow-md shadow-indigo-500/10 cursor-pointer mt-2.5">
+                <label className="py-1.5 px-4 bg-[#7C3AED] hover:bg-violet-950 text-white rounded-lg text-[10px] font-bold shadow-md shadow-indigo-500/10 cursor-pointer mt-2.5">
                   Choose File
                   <input type="file" onChange={handleFileUpload} className="hidden" />
                 </label>
@@ -188,7 +202,7 @@ export default function Assignments() {
                   </div>
                 </div>
                 <button 
-                  onClick={() => { dispatch(setUploadedFile(null)); dispatch(setAiFeedback(null)); }}
+                  onClick={() => { dispatch(setUploadedFile(null)); setAiFeedback(null); }}
                   className="py-1 px-2.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-[10px] rounded-md font-semibold cursor-pointer"
                 >
                   Remove
@@ -198,15 +212,15 @@ export default function Assignments() {
 
             {/* AI Feedback Module */}
             {aiFeedback && (
-              <div className="p-5 rounded-2xl bg-indigo-500/5 dark:bg-indigo-400/5 border border-[#4F46E5]/15 space-y-4">
+              <div className="p-5 rounded-2xl bg-indigo-500/5 dark:bg-indigo-400/5 border border-[#7C3AED]/15 space-y-4">
                 <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-[#4F46E5]" /> AI Review Summary
+                  <Sparkles size={14} className="text-[#7C3AED]" /> AI Review Summary
                 </h4>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                   <div className="bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/40 dark:border-slate-800/40 text-center">
                     <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold block mb-0.5">Grammar</span>
-                    <span className="text-base font-black font-heading text-[#4F46E5] leading-none">{aiFeedback.grammar}%</span>
+                    <span className="text-base font-black font-heading text-[#7C3AED] leading-none">{aiFeedback.grammar}%</span>
                   </div>
                   <div className="bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-200/40 dark:border-slate-800/40 text-center">
                     <span className="text-[9px] text-slate-400 dark:text-slate-500 font-semibold block mb-0.5">Logic</span>

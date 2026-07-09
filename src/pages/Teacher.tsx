@@ -1,22 +1,70 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, BookOpen, FileText, Award, Sparkles } from 'lucide-react';
+import { Users, BookOpen, FileText, Award, Sparkles, Plus, X, Check, AlertCircle, RefreshCw } from 'lucide-react';
 import { StatCard } from '../components/Cards';
-import { teacherService } from '../services';
-import type { TeacherDashboardData } from '../services';
+import { useTeacherDashboard } from '../hooks/useTeacher';
+import { useCreateCourse } from '../hooks/useCourses';
 import { SkeletonStatCard, SkeletonTableRow } from '../components/Skeleton';
 import Skeleton from '../components/Skeleton';
 
 export default function Teacher() {
   const navigate = useNavigate();
-  const [data, setData] = useState<TeacherDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isLoading: loading, isError, refetch } = useTeacherDashboard();
+  const createCourseMutation = useCreateCourse();
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [courseTitle, setCourseTitle] = useState('');
+  const [courseDescription, setCourseDescription] = useState('');
+  const [courseCategory, setCourseCategory] = useState('Computer Science');
+  const [courseDifficulty, setCourseDifficulty] = useState('Medium');
+  const [courseImageUrl, setCourseImageUrl] = useState('');
+  const [createSuccess, setCreateSuccess] = useState(false);
 
-  useEffect(() => {
-    teacherService.getDashboard().then(res => {
-      setData(res.data);
-    }).catch(console.error).finally(() => setLoading(false));
-  }, []);
+  const resetCreateForm = () => {
+    setCourseTitle('');
+    setCourseDescription('');
+    setCourseCategory('Computer Science');
+    setCourseDifficulty('Medium');
+    setCourseImageUrl('');
+    setCreateSuccess(false);
+  };
+
+  const handleCreateCourse = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!courseTitle.trim()) return;
+    try {
+      await createCourseMutation.mutateAsync({
+        title: courseTitle,
+        description: courseDescription || undefined,
+        category: courseCategory,
+        difficulty: courseDifficulty,
+        imageUrl: courseImageUrl || undefined,
+      });
+      setCreateSuccess(true);
+      setTimeout(() => {
+        resetCreateForm();
+        setShowCreateForm(false);
+      }, 2000);
+    } catch (err: unknown) {
+      console.error('Failed to create course:', err);
+    }
+  };
+
+  if (isError && !loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 max-w-7xl mx-auto">
+        <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
+          <AlertCircle size={24} className="text-red-500" />
+        </div>
+        <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Failed to load teacher dashboard</p>
+        <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[320px] text-center leading-relaxed">
+          Could not fetch your data. Check your connection and try again.
+        </p>
+        <button onClick={() => refetch()} className="flex items-center gap-2 py-2 px-4 bg-[#7C3AED] hover:bg-violet-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all">
+          <RefreshCw size={14} /> Retry
+        </button>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -83,6 +131,102 @@ export default function Teacher() {
   return (
     <div className="space-y-6 text-left max-w-7xl mx-auto font-sans">
       
+      {/* Header + Create Course Button */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-heading font-black text-slate-900 dark:text-white">Instructor Dashboard</h2>
+        <button
+          onClick={() => { setShowCreateForm(!showCreateForm); resetCreateForm(); }}
+          className="py-2 px-4 bg-[#7C3AED] hover:bg-violet-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-500/10 cursor-pointer transition-all"
+        >
+          {showCreateForm ? <X size={14} /> : <Plus size={14} />}
+          {showCreateForm ? 'Cancel' : 'Create Course'}
+        </button>
+      </div>
+
+      {/* Course Creation Form */}
+      {showCreateForm && (
+        <div className="glass-panel p-6 border border-[#7C3AED]/20 bg-indigo-500/5 dark:bg-indigo-400/5">
+          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 mb-5 flex items-center gap-1.5">
+            <BookOpen size={16} className="text-[#7C3AED]" /> New Course
+          </h3>
+          <form onSubmit={handleCreateCourse} className="space-y-4">
+            <div className="form-group">
+              <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Course Title *</label>
+              <input
+                type="text"
+                required
+                value={courseTitle}
+                onChange={(e) => setCourseTitle(e.target.value)}
+                className="form-input text-xs"
+                placeholder="e.g. Advanced Java Programming"
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Description</label>
+              <textarea
+                value={courseDescription}
+                onChange={(e) => setCourseDescription(e.target.value)}
+                className="form-input text-xs min-h-[80px] resize-y"
+                placeholder="Describe what students will learn..."
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="form-group">
+                <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Category</label>
+                <select value={courseCategory} onChange={(e) => setCourseCategory(e.target.value)} className="form-input text-xs">
+                  <option value="Computer Science">Computer Science</option>
+                  <option value="Information Tech">Information Technology</option>
+                  <option value="Advanced Science">Advanced Science</option>
+                  <option value="Mathematics">Mathematics</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Difficulty</label>
+                <select value={courseDifficulty} onChange={(e) => setCourseDifficulty(e.target.value)} className="form-input text-xs">
+                  <option value="Easy">Easy</option>
+                  <option value="Medium">Medium</option>
+                  <option value="Hard">Hard</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label text-[11px] font-semibold text-slate-400 mb-1">Image URL</label>
+                <input
+                  type="text"
+                  value={courseImageUrl}
+                  onChange={(e) => setCourseImageUrl(e.target.value)}
+                  className="form-input text-xs"
+                  placeholder="https://images.unsplash.com/..."
+                />
+              </div>
+            </div>
+            {createCourseMutation.isError && (
+              <div className="text-[11px] font-semibold text-red-500 bg-red-500/10 rounded-lg p-2.5">Failed to create course. Please try again.</div>
+            )}
+            {createSuccess && (
+              <div className="text-[11px] font-semibold text-emerald-500 bg-emerald-500/10 rounded-lg p-2.5 flex items-center gap-2">
+                <Check size={14} /> Course created successfully!
+              </div>
+            )}
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => { setShowCreateForm(false); resetCreateForm(); }}
+                className="py-2 px-5 border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={createCourseMutation.isPending || !courseTitle.trim()}
+                className="py-2 px-5 bg-[#7C3AED] hover:bg-violet-700 disabled:opacity-50 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-md shadow-indigo-500/10 cursor-pointer transition-all"
+              >
+                {createCourseMutation.isPending ? 'Creating...' : <><Sparkles size={14} /> Create Course</>}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Grid stats widgets */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
@@ -147,9 +291,9 @@ export default function Teacher() {
         </div>
 
         {/* AI Classroom Insights */}
-        <div className="glass-panel p-6 border border-[#4F46E5]/15 bg-indigo-500/5 dark:bg-indigo-400/5 h-fit space-y-4">
+        <div className="glass-panel p-6 border border-[#7C3AED]/15 bg-indigo-500/5 dark:bg-indigo-400/5 h-fit space-y-4">
           <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-            <Sparkles size={14} className="text-[#4F46E5]" /> AI Instructor Insights
+            <Sparkles size={14} className="text-[#7C3AED]" /> AI Instructor Insights
           </h3>
           <div className="space-y-3">
             {(data?.aiInsights || []).map(ins => (
@@ -197,7 +341,7 @@ export default function Teacher() {
                   <td>
                     <button 
                       onClick={() => navigate('/dashboard/assignments')}
-                      className="py-1 px-3 bg-[#4F46E5] hover:bg-indigo-750 text-white rounded-md text-[10px] font-bold shadow-md shadow-indigo-500/10 cursor-pointer"
+                      className="py-1 px-3 bg-[#7C3AED] hover:bg-violet-950 text-white rounded-md text-[10px] font-bold shadow-md shadow-indigo-500/10 cursor-pointer"
                     >
                       Audit with AI Assist
                     </button>

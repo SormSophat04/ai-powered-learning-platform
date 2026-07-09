@@ -1,5 +1,10 @@
 import api from './api';
 
+export interface AiUsageEntry {
+  time: string;
+  requests: number;
+}
+
 export interface AdminDashboardData {
   stats: {
     totalActiveUsers: number;
@@ -21,13 +26,10 @@ export interface AdminDashboardData {
     time: string;
     type: string;
   }[];
-  aiUsageStats: {
-    time: string;
-    requests: number;
-  }[];
+  aiUsageStats: AiUsageEntry[];
 }
 
 export const adminService = {
   getStats: () =>
-    api.get<{ success: boolean; message: string; data: AdminDashboardData }>('/api/admin/stats').then(r => r.data),
+    api.get<AdminDashboardData>('/api/admin/stats').then(r => r.data),
 };
