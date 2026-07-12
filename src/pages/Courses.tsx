@@ -8,6 +8,8 @@ import { useCreateConversation, useSendMessage } from '../hooks/useChat';
 import type { ModuleDto, LessonDto } from '../services';
 import { SkeletonLessonItem } from '../components/Skeleton';
 import Skeleton from '../components/Skeleton';
+import ReactMarkdown from 'react-markdown';
+import { CodeBlock } from '../components/AIChat';
 
 export default function Courses() {
   const selectedCourse = useAppSelector((s) => s.courses.selectedCourse);
@@ -315,8 +317,96 @@ export default function Courses() {
           ) : (
             <div className="glass-panel p-8 min-h-[360px] border border-slate-200/60 dark:border-slate-800/40 bg-white/50 dark:bg-slate-900/30">
               <h2 className="text-xl font-heading font-bold text-slate-900 dark:text-white mb-4">{currentLesson?.title || activeLesson.title}</h2>
-              <div className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed whitespace-pre-wrap">
-                {currentLesson?.content || "No content available for this lesson."}
+              <div className="text-slate-600 dark:text-slate-300 text-xs leading-relaxed">
+                {currentLesson?.content ? (
+                  <ReactMarkdown
+                    components={{
+                      code(props) {
+                        const { children, className, node, ...rest } = props;
+                        const match = /language-(\w+)/.exec(className || '');
+                        const codeValue = String(children).replace(/\n$/, '');
+                        const isInline = !className && !codeValue.includes('\n');
+
+                        if (!isInline) {
+                          return (
+                            <CodeBlock
+                              code={codeValue}
+                              language={match ? match[1] : ''}
+                            />
+                          );
+                        }
+
+                        return (
+                          <code
+                            className="bg-slate-100 dark:bg-slate-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded font-mono text-[11.5px] border border-slate-200/60 dark:border-slate-800/50"
+                            {...rest}
+                          >
+                            {children}
+                          </code>
+                        );
+                      },
+                      p: ({ children }) => (
+                        <p className="text-[13px] leading-relaxed mb-3.5 last:mb-0 text-slate-700 dark:text-slate-200">
+                          {children}
+                        </p>
+                      ),
+                      h1: ({ children }) => (
+                        <h1 className="text-[17px] font-bold mt-4 mb-2.5 font-display text-slate-900 dark:text-white">
+                          {children}
+                        </h1>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="text-[15px] font-bold mt-3.5 mb-2 font-display text-slate-900 dark:text-white">
+                          {children}
+                        </h2>
+                      ),
+                      h3: ({ children }) => (
+                        <h3 className="text-[14px] font-bold mt-3 mb-1.5 font-display text-slate-900 dark:text-white">
+                          {children}
+                        </h3>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="list-disc pl-5 mb-3.5 space-y-1.5 text-[13px] text-slate-700 dark:text-slate-200">
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({ children }) => (
+                        <ol className="list-decimal pl-5 mb-3.5 space-y-1.5 text-[13px] text-slate-700 dark:text-slate-200">
+                          {children}
+                        </ol>
+                      ),
+                      li: ({ children }) => (
+                        <li className="mb-0.5 leading-relaxed">
+                          {children}
+                        </li>
+                      ),
+                      a: ({ children, href }) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline font-medium hover:opacity-85 transition-opacity text-indigo-600 dark:text-indigo-400"
+                        >
+                          {children}
+                        </a>
+                      ),
+                      blockquote: ({ children }) => (
+                        <blockquote className="border-l-3 pl-3 italic my-3.5 border-indigo-500/40 text-slate-500 dark:text-slate-400">
+                          {children}
+                        </blockquote>
+                      ),
+                      strong: ({ children }) => (
+                        <strong className="font-bold text-slate-900 dark:text-white">
+                          {children}
+                        </strong>
+                      )
+                    }}
+                  >
+                    {currentLesson.content}
+                  </ReactMarkdown>
+                ) : (
+                  "No content available for this lesson."
+                )}
               </div>
             </div>
           )}
@@ -393,7 +483,98 @@ export default function Courses() {
                     : 'bg-slate-50 dark:bg-slate-900/60 border border-slate-200/40 dark:border-slate-800/30 text-slate-800 dark:text-slate-200'
                 }`}
               >
-                <strong>{chat.sender === 'student' ? 'You' : 'AI'}:</strong> {chat.text}
+                <div className="font-bold mb-1 select-none">
+                  {chat.sender === 'student' ? 'You' : 'AI'}
+                </div>
+                <ReactMarkdown
+                  components={{
+                    code(props) {
+                      const { children, className, node, ...rest } = props;
+                      const match = /language-(\w+)/.exec(className || '');
+                      const codeValue = String(children).replace(/\n$/, '');
+                      const isInline = !className && !codeValue.includes('\n');
+
+                      if (!isInline) {
+                        return (
+                          <CodeBlock
+                            code={codeValue}
+                            language={match ? match[1] : ''}
+                          />
+                        );
+                      }
+
+                      return (
+                        <code
+                          className={
+                            chat.sender === 'student'
+                              ? "bg-white/15 text-white px-1.5 py-0.5 rounded font-mono text-[10px]"
+                              : "bg-slate-100 dark:bg-slate-900 text-rose-600 dark:text-rose-400 px-1.5 py-0.5 rounded font-mono text-[10px] border border-slate-200/60 dark:border-slate-800/50"
+                          }
+                          {...rest}
+                        >
+                          {children}
+                        </code>
+                      );
+                    },
+                    p: ({ children }) => (
+                      <p className={`text-[11px] leading-relaxed mb-1.5 last:mb-0 ${chat.sender === 'student' ? 'text-indigo-900/90 dark:text-indigo-200/90' : 'text-slate-700 dark:text-slate-200'}`}>
+                        {children}
+                      </p>
+                    ),
+                    h1: ({ children }) => (
+                      <h1 className="text-[12px] font-bold mt-2 mb-1 font-display">
+                        {children}
+                      </h1>
+                    ),
+                    h2: ({ children }) => (
+                      <h2 className="text-[11.5px] font-bold mt-2 mb-1 font-display">
+                        {children}
+                      </h2>
+                    ),
+                    h3: ({ children }) => (
+                      <h3 className="text-[11px] font-bold mt-1.5 mb-1 font-display">
+                        {children}
+                      </h3>
+                    ),
+                    ul: ({ children }) => (
+                      <ul className="list-disc pl-4 mb-2 space-y-0.5 text-[11px]">
+                        {children}
+                      </ul>
+                    ),
+                    ol: ({ children }) => (
+                      <ol className="list-decimal pl-4 mb-2 space-y-0.5 text-[11px]">
+                        {children}
+                      </ol>
+                    ),
+                    li: ({ children }) => (
+                      <li className="mb-0.5 leading-relaxed">
+                        {children}
+                      </li>
+                    ),
+                    a: ({ children, href }) => (
+                      <a
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={`underline font-medium hover:opacity-85 transition-opacity ${chat.sender === 'student' ? 'text-indigo-900/90 dark:text-indigo-250/90' : 'text-indigo-600 dark:text-indigo-400'}`}
+                      >
+                        {children}
+                      </a>
+                    ),
+                    blockquote: ({ children }) => (
+                      <blockquote className={`border-l-2 pl-2 italic my-1.5 ${chat.sender === 'student' ? 'border-indigo-600/40 text-indigo-900/90 dark:text-indigo-200/90' : 'border-indigo-500/40 text-slate-500 dark:text-slate-400'}`}>
+                        {children}
+                      </blockquote>
+                    ),
+                    strong: ({ children }) => (
+                      <strong className="font-bold">
+                        {children}
+                      </strong>
+                    )
+                  }}
+                >
+                  {chat.text}
+                </ReactMarkdown>
               </div>
             ))}
 
