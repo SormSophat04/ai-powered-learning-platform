@@ -5,8 +5,7 @@ import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { setSelectedCourse } from '../store/coursesSlice';
 import { StatCard, ActivityCard } from '../components/Cards';
 import { PerformanceChart, StudyHoursBar } from '../components/Charts';
-import { useDashboardStats, useRecentActivity } from '../hooks/useDashboard';
-import { useCourses } from '../hooks/useCourses';
+import { useDashboardStats, useRecentActivity, useCourses, usePerformance, useStudyHours } from '../hooks';
 import type { CourseSummary } from '../services';
 import Skeleton, { SkeletonStatCard, SkeletonChart, SkeletonCourseCard, SkeletonActivityItem } from '../components/Skeleton';
 
@@ -17,9 +16,11 @@ export default function Dashboard() {
   const { data: stats, isLoading: statsLoading, isError: statsError, refetch: refetchStats } = useDashboardStats();
   const { data: activityData, isLoading: activityLoading, isError: activityError, refetch: refetchActivity } = useRecentActivity();
   const { data: coursesData, isLoading: coursesLoading, isError: coursesError, refetch: refetchCourses } = useCourses();
+  const { data: performanceData, isLoading: performanceLoading, isError: performanceError, refetch: refetchPerformance } = usePerformance();
+  const { data: studyHoursData, isLoading: studyHoursLoading, isError: studyHoursError, refetch: refetchStudyHours } = useStudyHours();
 
-  const loading = statsLoading || activityLoading || coursesLoading;
-  const hasError = statsError || activityError || coursesError;
+  const loading = statsLoading || activityLoading || coursesLoading || performanceLoading || studyHoursLoading;
+  const hasError = statsError || activityError || coursesError || performanceError || studyHoursError;
 
   if (hasError && !loading) {
     return (
@@ -32,7 +33,7 @@ export default function Dashboard() {
           Could not fetch your data. Check your connection and try again.
         </p>
         <button
-          onClick={() => { refetchStats(); refetchActivity(); refetchCourses(); }}
+          onClick={() => { refetchStats(); refetchActivity(); refetchCourses(); refetchPerformance(); refetchStudyHours(); }}
           className="flex items-center gap-2 py-2 px-4 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold cursor-pointer transition-all"
         >
           <RefreshCw size={14} /> Retry
@@ -98,15 +99,15 @@ export default function Dashboard() {
           icon={<BookOpen size={20} />} 
         />
         <StatCard 
-          title="Assignments Pending" 
-          value={stats?.assignmentsPending ?? 0} 
+          title="Assignments Completed" 
+          value={stats?.assignmentsCompleted ?? 0} 
           icon={<FileText size={20} />} 
           iconBgColor="bg-amber-500/10" 
           iconColor="text-amber-500" 
         />
         <StatCard 
-          title="Current GPA" 
-          value={stats?.currentGpa ?? 0} 
+          title="Quizzes Taken" 
+          value={stats?.quizzesTaken ?? 0} 
           icon={<Award size={20} />} 
           iconBgColor="bg-cyan-500/10" 
           iconColor="text-cyan-500" 
@@ -126,14 +127,14 @@ export default function Dashboard() {
           <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider flex items-center gap-2">
             <TrendingUpIcon /> Performance Chart (W1-W12)
           </h3>
-          <PerformanceChart />
+          <PerformanceChart data={performanceData} />
         </div>
 
         <div className="glass-panel p-6 border border-slate-200/60 dark:border-slate-800/40">
           <h3 className="text-[13px] font-bold text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider flex items-center gap-2">
             <BarChartIcon /> Weekly Workload
           </h3>
-          <StudyHoursBar />
+          <StudyHoursBar data={studyHoursData} />
         </div>
       </div>
 

@@ -2,8 +2,8 @@ import api from './api';
 
 export interface DashboardStats {
   coursesEnrolled: number;
-  assignmentsPending: number;
-  currentGpa: number;
+  assignmentsCompleted: number;
+  quizzesTaken: number;
   learningStreak: number;
 }
 
